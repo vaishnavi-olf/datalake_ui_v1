@@ -219,6 +219,23 @@
   #nav button+button{border-left:2px solid #f2b1b1;margin:6px 0;padding:3px 0}
   #nav svg{width:18px;height:18px;fill:none;stroke:#111;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   #nav .red{color:#9f1239}#nav .red svg{stroke:#b91c1c}
+  /* FLN additions */
+  .tgl{display:flex;gap:4px;background:#f1f3f7;border-radius:8px;padding:3px}
+  .tg{border:0;background:none;border-radius:6px;padding:5px 9px;font-size:12px;font-weight:700;color:#6b7280}
+  .tg.on{background:var(--blue);color:#fff}
+  /* student-wise card: OMR button in the class band */
+  .chip.swc{padding:8px 13px;font-size:13px;border-radius:9px;white-space:nowrap}
+  .omr{display:flex;align-items:center;gap:5px;border:1px solid #6b93f0;background:#fff;color:var(--blue);border-radius:7px;padding:5px 9px;font:700 11px var(--mono);letter-spacing:.02em}
+  .omr svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2}
+  .sw th{text-align:center;white-space:normal;line-height:1.3;min-width:72px;vertical-align:middle}
+  .sw th:first-child{text-align:left;min-width:0}
+  .sw td{text-align:center}.sw td:first-child{text-align:left}
+  /* cluster-wise / school-wise overview: 5 rows visible, scroll for the rest */
+  .tw.v5{overflow:auto;overscroll-behavior:contain}
+  .tw.v5 thead th{position:sticky;top:0;z-index:2}
+  .tw.v5 thead th:first-child{z-index:4}
+  .tw.v5 tr.tot td{position:sticky;z-index:2}
+  .tw.v5 tr.tot td:first-child{z-index:3}
 </style>
 </head>
 <body>
@@ -234,11 +251,16 @@ const CONFIG = {
   tagline: 'PROGRAM ANALYTICS',
   districtName: 'ThaneZP District',
   role: 'District Admin',
-  academicYears: ['AY 2026-27', 'AY 2025-26'],
+  academicYears: ['AY 2026-27', 'AY 2025-26'],   // only years that have a cycle with data are shown
   cycle: 'Oct 2026',
-  journeyCycles: ['Apr 2026', 'Jul 2026', 'Oct 2026'],   // student journey chart (last one = current cycle)
-  examTypes: ['NMMS', 'Scholarship'],
-  examFilters: ['ThaneZP_SE_4th_Oct26', 'ThaneZP_Scholarship_7th_Oct26'],
+  examTypes: ['NMMS', 'Scholarship', 'FLN'],
+  examLabels: { FLN: 'FLN(CL. 1-5)' },                   // chip text (falls back to the exam key)
+  rootId: 'thane',
+  legendSep: ': ',
+  nipunLabel: 'Nipun',
+  journeyOrder: [3, 1, 0, 2],                             // subject order in the student journey
+  examFilters: ['ThaneZP_SE_4th_Oct26', 'ThaneZP_Scholarship_7th_Oct26'],   // per programme: see PROFILES
+  omrSheets: 2,                                           // answer sheets (OMR) per student
   classes: ['Class 4'],
   // Student-table subjects (order = column order)
   subjects: ['English', 'गणित', 'बुद्धिमत्ता चाचणी', 'मराठी'],
@@ -266,24 +288,80 @@ const CONFIG = {
   bottomNav: ['For You', 'Teacher Story', 'Diary']
 };
 
+/* Shared Thane location hierarchy – used by every programme (NMMS, Scholarship, FLN). */
+const THANE_BLOCKS = [
+  { code:'272115', name:'AMBERNATH', clusters:['BADLAPUR RURAL','WANGANI','HILL LINE'] },
+  { code:'272101', name:'BHIWANDI',  clusters:['PADGHA','ANJUR','KHARBAV','ANGAON','VAJRESHWARI','GANESHPURI'] },
+  { code:'272105', name:'KALYAN',    clusters:['TITWALA','KHADAVALI','PISAVALI','GHOLAPNAGAR','MOHONE','NETIVALI'] },
+  { code:'272109', name:'MURBAD',    clusters:['DHASAI','TOKAVDE','MHASA','SHIVALE','KUDAVALI'] },
+  { code:'272112', name:'SHAHAPUR',  clusters:['KASARA','KINHAVALI','VASHALE','DOLKHAMB','KHARDI','SHENVA','ATGAON'] }
+];
+function withBlock(d){ const b = THANE_BLOCKS.find(x => x.code === d.code); return {...d, name:b.name, clusters:b.clusters}; }
+const CYCLE_AY = {'Oct 2025':'AY 2025-26', 'Dec 2025':'AY 2025-26', 'Apr 2026':'AY 2025-26', 'Oct 2026':'AY 2026-27'};
+
+/* FLN (CL. 1–5) programme – Thane district. Overrides CONFIG only while FLN is the selected exam,
+   so NMMS and Scholarship keep the values above. */
+const PROFILES = {
+  NMMS:        { examFilters: ['ThaneZP_NMMSE'] },
+  Scholarship: { examFilters: ['ThaneZP_SE_4th_Oct26', 'ThaneZP_Scholarship_7th_Oct26'] },
+  FLN: {
+    omrSheets: 1,
+    examFilters: [],
+    classes: ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5'],
+    subjects: ['English', 'गणित'],                         // भाषा replaced with English
+    questionSubjects: ['English', 'गणित'],
+    // L4 = NIPUN (Proficient). `tag` is the label used on the Academic / Student pages (L1 … NIPUN).
+    levels: [
+      { key: 'L1', name: 'Failing',    color: '#dc2626' },
+      { key: 'L2', name: 'Basic',      color: '#ea580c' },
+      { key: 'L3', name: 'Developing', color: '#16a34a' },
+      { key: 'L4', name: 'NIPUN',      color: '#2563eb', tag: 'NIPUN' }
+    ],
+    errorTypes: ['Invalid UDISE', 'Invalid Class', 'Invalid Category (Lot)', 'Duplicate Sheets', 'Invalid Sheets (Not Read)'],
+    legendSep: ' ',
+    nipunLabel: 'NIPUN',
+    barRound: true,
+    journeyOrder: [0, 1]
+  }
+};
+/* FLN block data for the latest cycle (Apr 2026), on the shared Thane hierarchy. dist = students at [L1, L2, L3, L4].
+   (Sample figures carried over from the earlier FLN sample set, folded into the 5 Thane blocks – district totals unchanged.)
+   Earlier cycles are derived with FLN_CYCLE_SHIFT (percentage-point change per level). */
+const FLN_SPECS = [
+  { code:'272115', schools:265, part:246, dist:[302,838,1274,4663], enrolled:7545, errors:71 },
+  { code:'272101', schools:598, part:549, dist:[1272,1774,2699,11002], enrolled:18052, errors:167 },
+  { code:'272105', schools:553, part:489, dist:[900,1272,1937,7276], enrolled:12370, errors:114 },
+  { code:'272109', schools:459, part:393, dist:[568,1037,1578,5897], enrolled:9756, errors:91 },
+  { code:'272112', schools:641, part:594, dist:[1235,1703,2589,10402], enrolled:17027, errors:159 }
+].map(withBlock);
+const FLN_CYCLE_SHIFT = [[11, 8, 0, -19], [5, 6, 2, -13], [0, 0, 0, 0]];   // Oct 2025, Dec 2025, Apr 2026
+const FLN_APPEARED = [0.955, 0.975, 1], FLN_ERR = [0.016, 0.013, 0.01];
+
 /* Block-level sample data (replace with real numbers).
    dist = students at [D, C, B, A]; enrolled ≥ appeared (= sum of dist).
    Clusters, schools and students below block level are generated from these. */
 const SPECS = {
   NMMS: [
-    { code:'272115', name:'AMBERNATH', schools:170, part:8,  dist:[17,8,0,0],    enrolled:47,  errors:2,  clusters:['ALYANI','TULAI','MANGRUL'] },
-    { code:'272101', name:'BHIWANDI',  schools:450, part:28, dist:[82,13,1,0],   enrolled:128, errors:8,  clusters:['KONGAON','CHIMBIPADA','PADGHA','VAJRESHWARI','SAVAD'] },
-    { code:'272105', name:'KALYAN',    schools:212, part:12, dist:[32,7,0,0],    enrolled:49,  errors:3,  clusters:['SAPGAON','KAMBA','NIMBAVLI','TITWALA'] },
-    { code:'272109', name:'MURBAD',    schools:330, part:15, dist:[115,20,1,0],  enrolled:184, errors:10, clusters:['MHASA','DHASAI','SARALGAON','KISHOR'] },
-    { code:'272112', name:'SHAHAPUR',  schools:170, part:7,  dist:[53,12,0,0],   enrolled:105, errors:5,  clusters:['KASARA','DAHIVALI','DOLKHAMB'] }
-  ],
+    { code:'272115', schools:170, part:8,  dist:[17,8,0,0],    enrolled:47,  errors:2 },
+    { code:'272101', schools:450, part:28, dist:[82,13,1,0],   enrolled:128, errors:8 },
+    { code:'272105', schools:212, part:12, dist:[32,7,0,0],    enrolled:49,  errors:3 },
+    { code:'272109', schools:330, part:15, dist:[115,20,1,0],  enrolled:184, errors:10 },
+    { code:'272112', schools:170, part:7,  dist:[53,12,0,0],   enrolled:105, errors:5 }
+  ].map(withBlock),
   Scholarship: [
-    { code:'272115', name:'AMBERNATH', schools:170, part:6,  dist:[10,12,6,2],   enrolled:44,  errors:3,  clusters:['ALYANI','TULAI','MANGRUL'] },
-    { code:'272101', name:'BHIWANDI',  schools:450, part:20, dist:[38,33,15,5],  enrolled:120, errors:7,  clusters:['KONGAON','CHIMBIPADA','PADGHA','VAJRESHWARI','SAVAD'] },
-    { code:'272105', name:'KALYAN',    schools:212, part:9,  dist:[14,14,8,2],   enrolled:52,  errors:2,  clusters:['SAPGAON','KAMBA','NIMBAVLI','TITWALA'] },
-    { code:'272109', name:'MURBAD',    schools:330, part:12, dist:[55,45,22,6],  enrolled:170, errors:9,  clusters:['MHASA','DHASAI','SARALGAON','KISHOR'] },
-    { code:'272112', name:'SHAHAPUR',  schools:170, part:6,  dist:[28,24,9,3],   enrolled:90,  errors:4,  clusters:['KASARA','DAHIVALI','DOLKHAMB'] }
-  ]
+    { code:'272115', schools:170, part:6,  dist:[10,12,6,2],   enrolled:44,  errors:3 },
+    { code:'272101', schools:450, part:20, dist:[38,33,15,5],  enrolled:120, errors:7 },
+    { code:'272105', schools:212, part:9,  dist:[14,14,8,2],   enrolled:52,  errors:2 },
+    { code:'272109', schools:330, part:12, dist:[55,45,22,6],  enrolled:170, errors:9 },
+    { code:'272112', schools:170, part:6,  dist:[28,24,9,3],   enrolled:90,  errors:4 }
+  ].map(withBlock)
+};
+
+/* Cycles that actually have data, per programme. Only these are offered in the Cycle filter. */
+const PROGRAMME_CYCLES = {
+  NMMS:        { 'Oct 2026': () => SPECS.NMMS },
+  Scholarship: { 'Oct 2026': () => SPECS.Scholarship },
+  FLN:         { 'Oct 2025': () => flnSpecs(0), 'Dec 2025': () => flnSpecs(1), 'Apr 2026': () => flnSpecs(2) }
 };
 
 const SCHOOL_NAMES = ['SHELAVALI HIGHER','KORAVALE','RANJANOLI','UMBERMALI','AGASAN','ANJUR','BAPGAON','BHAL','BHARODI','CHERPOLI','DAHIVALI','DEOLI','DHASAI','DIGHA','GOVELI','KALHER','KASHELI','KHARBAV','KOLIVALI','MANKOLI','NANDIVALI','NARPOLI','PADGHA','PIMPALGAON','PISE','SAVAD','SARALGAON','TEMGHAR','VADAVLI','VALGAON','WARAP','ABHOLI','ADIVALI','AKLOLI','ALIVALI','ASNOLI','ATGAON','BORIVALI','CHARI','CHINCHAVALI','DONIVALI','GANESHPURI','GHOTGAON','GUNDAVALI','HEDAVLI','JAMBHUL','KAMBA','KANERI','KARAVALE','KHADAVLI','KHARIVALI','KUDUS','LOHAGAON','MALEGAON','MHASA','MOHONE','NIMBAVLI','PALASPE','PARGAON','SAGAON','SHIROLI','SONAVLI','TALAVALI','TOKAVADE','UMBARPADA','VAJRESHWARI','VASIND','VEHALE','YEWA','ZIDKE'];
@@ -373,7 +451,23 @@ const QBANK = {
 /* =====================  END OF EDIT BLOCK  ===================== */
 
 /* ---------- helpers ---------- */
-const L = CONFIG.levels, SUBJ = CONFIG.subjects, ET = CONFIG.errorTypes;
+let L = CONFIG.levels, SUBJ = CONFIG.subjects, ET = CONFIG.errorTypes;
+/* profile switching: NMMS/Scholarship use CONFIG as written; FLN overlays PROFILES.FLN */
+const BASE = {};
+Object.values(PROFILES).forEach(p => Object.keys(p).forEach(k => { if (!(k in BASE)) BASE[k] = CONFIG[k]; }));
+const isFLN = () => state.exam === 'FLN';
+function applyProfile(){
+  Object.assign(CONFIG, BASE, PROFILES[state.exam] || {});
+  const all = Object.keys(PROGRAMME_CYCLES[state.exam]);                       // cycles with data
+  CONFIG.academicYears = [...new Set(all.map(c => CYCLE_AY[c]))].sort().reverse();
+  if (!CONFIG.academicYears.includes(state.ay)) state.ay = CONFIG.academicYears[0];
+  CONFIG.cycles = all.filter(c => CYCLE_AY[c] === state.ay);
+  if (state.fcyc == null || state.fcyc >= CONFIG.cycles.length) state.fcyc = CONFIG.cycles.length - 1;   // default: latest
+  CONFIG.cycle = CONFIG.cycles[state.fcyc]; CONFIG.journeyCycles = CONFIG.cycles;
+  L = CONFIG.levels; SUBJ = CONFIG.subjects; ET = CONFIG.errorTypes;
+}
+const lk = i => L[i].tag || L[i].key;                       // L1 … NIPUN for FLN, unchanged for others
+const examLabel = e => CONFIG.examLabels[e] || e;
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = n => Number(n).toLocaleString('en-IN');
 const pc = (x, y, d = 0) => y ? (x / y * 100).toFixed(d) : (0).toFixed(d);
@@ -402,7 +496,7 @@ function buildDB(specs, seed){
     const appeared = sum(b.dist), nC = b.clusters.length;
     const block = {id:b.code, type:'block', name:b.name, title:b.code+'-'+b.name, parent:district, children:[]};
     byId[block.id] = block; district.children.push(block);
-    const partSplit = split(b.part, nC, rng, 1), extra = split(b.schools - b.part, nC, rng);
+    const partSplit = split(b.part, nC, rng, b.part >= nC ? 1 : 0), extra = split(b.schools - b.part, nC, rng);
     const sizes = split(appeared, b.part, rng, 1), enrExtra = split(b.enrolled - appeared, b.part, rng);
     const errBy = Array(b.part).fill(0), errType = Array.from({length:b.part}, () => Array(ET.length).fill(0));
     for (let e = 0; e < b.errors; e++){
@@ -419,7 +513,7 @@ function buildDB(specs, seed){
       byId[cid] = cl; block.children.push(cl);
       for (let k = 0; k < partSplit[ci]; k++, si++){
         const sid = cid + (201 + k);
-        const nm = (b.name === 'BHIWANDI' && cn === 'CHIMBIPADA' && k === 0) ? 'DHAMANE' : SCHOOL_NAMES[nameIdx++ % SCHOOL_NAMES.length];
+        const nm = SCHOOL_NAMES[nameIdx++ % SCHOOL_NAMES.length];
         const students = [];
         for (let j = 0; j < sizes[si]; j++){
           const overall = pool.pop();
@@ -440,19 +534,92 @@ function buildDB(specs, seed){
   });
   return {district, byId};
 }
+/* FLN hierarchy for one cycle. School structure is seeded identically for every cycle (same ids),
+   so the trend chart can follow any district / block / cluster / school across cycles. */
+function flnSpecs(ci){
+  const sh = FLN_CYCLE_SHIFT[ci];
+  return FLN_SPECS.map(b => {
+    if (ci === FLN_SPECS_LAST) return b;
+    const app = Math.round(sum(b.dist) * FLN_APPEARED[ci]), t = sum(b.dist);
+    const w = b.dist.map((v, i) => Math.max(1, v / t * 100 + sh[i]));
+    const tw = sum(w), raw = w.map(x => x / tw * app), d = raw.map(Math.floor);
+    raw.map((r, i) => [r - Math.floor(r), i]).sort((a, b) => b[0] - a[0]).slice(0, app - sum(d)).forEach(([, i]) => d[i]++);
+    return {...b, dist:d, errors:Math.round(app * FLN_ERR[ci])};
+  });
+}
+const FLN_SPECS_LAST = 2;
+function buildFLN(specs, cyc){
+  const rs = mulberry32(41), rd = mulberry32(hash('FLN' + cyc)), byId = {}, R = CONFIG.rootId; let nameIdx = 0;
+  const district = {id:R, type:'district', name:CONFIG.districtName, title:CONFIG.districtName, parent:null, children:[], fln:true};
+  byId[R] = district;
+  specs.forEach(b => {
+    const appeared = sum(b.dist), nC = b.clusters.length, errRate = b.errors / appeared;
+    const block = {id:b.code, type:'block', name:b.name, title:b.code+'-'+b.name, parent:district, children:[], fln:true};
+    byId[block.id] = block; district.children.push(block);
+    const partSplit = split(b.part, nC, rs, 1), extra = split(b.schools - b.part, nC, rs);
+    const sizes = split(appeared, b.part, rd, 1), absent = split(b.enrolled - appeared, b.part, rd);
+    const pool = [];
+    b.dist.forEach((n, g) => { for (let i = 0; i < n; i++) pool.push(g); });
+    shuffle(pool, rd);
+    let si = 0;
+    b.clusters.forEach((cn, cj) => {
+      const cid = b.code + pad2(cj + 1);
+      const cl = {id:cid, type:'cluster', name:cn, title:cid+'-'+cn, parent:block, children:[], totalSchools:partSplit[cj] + extra[cj], fln:true};
+      byId[cid] = cl; block.children.push(cl);
+      for (let k = 0; k < partSplit[cj]; k++, si++){
+        const sid = cid + (201 + k), nm = SCHOOL_NAMES[nameIdx++ % SCHOOL_NAMES.length];
+        const sc = {id:sid, type:'school', name:'ZPS.'+nm, title:sid+'-ZPS.'+nm, parent:cl, students:[], absent:split(absent[si], 5, rd), fln:true};
+        byId[sid] = sc; cl.children.push(sc);
+        const raw = [];
+        for (let j = 0; j < sizes[si]; j++){
+          const overall = pool.pop();
+          let cls = 1 + Math.floor(rd() * 5);
+          if (rd() < .35) cls = Math.max(1, Math.min(5, cls + (overall >= 2 ? 1 : -1)));
+          const grades = SUBJ.map(() => {
+            let g = overall; if (rd() < .3) g = Math.max(0, Math.min(3, overall + (rd() < .5 ? -1 : 1)));
+            return rd() < .03 ? null : g;
+          });
+          raw.push({cls, overall, grades, err:rd() < errRate ? Math.floor(rd() * ET.length) : -1});
+        }
+        raw.sort((a, b) => a.cls - b.cls);
+        const seq = [0,0,0,0,0,0];
+        raw.forEach(x => {
+          const roll = ++seq[x.cls], key = sid + '_' + (x.cls * 1000 + roll);   // roll restarts in every class
+          const stu = {id:key, key, type:'student', name:'Student '+roll, title:'Student '+roll, parent:sc, roll, ...x};
+          stu.stu = stu; byId[key] = stu; sc.students.push(stu);
+        });
+      }
+    });
+  });
+  return {district, byId};
+}
 const DBS = {};
-const state = {rk:{}, cyc:null, exam:CONFIG.examTypes[0], ay:CONFIG.academicYears[0], sort:{key:'name', dir:1}, qs:0, qsort:null, ef:0, exp:{}};
-const db = () => DBS[state.exam] || (DBS[state.exam] = buildDB(SPECS[state.exam], state.exam === 'NMMS' ? 11 : 29));
+const state = {rk:{}, cyc:null, exam:CONFIG.examTypes[0], ay:CONFIG.academicYears[0], sort:{key:'name', dir:1}, qs:0, qsort:null, ef:0, exp:{},
+  fcyc:null, cls:0, acs:0, acb:0, trend:3};   // selected cycle index; FLN: class filter (0 = All), academic-page tabs, trend level
+/* one hierarchy per programme + cycle, built only from that cycle's data */
+const cycleDB = (exam, cyc) => DBS[exam + '|' + cyc] || (DBS[exam + '|' + cyc] = exam === 'FLN'
+  ? buildFLN(PROGRAMME_CYCLES.FLN[cyc](), cyc) : buildDB(PROGRAMME_CYCLES[exam][cyc](), exam === 'NMMS' ? 11 : 29));
+const db = () => cycleDB(state.exam, CONFIG.cycle);
 const find = id => db().byId[id];
 const ancestors = n => { const a = []; for (let p = n.parent; p; p = p.parent) a.unshift(p); return a; };
 function descend(n, type){ const out = []; (function w(x){ if (x.type === type) out.push(x); (x.children||[]).forEach(w); })(n); return out; }
-function fallbackId(id){ if (!find(id) && id.includes('_')) id = id.split('_')[0]; while (id !== 'thane' && !find(id)) id = id.length >= 11 ? id.slice(0,8) : id.length >= 8 ? id.slice(0,6) : 'thane'; return id; }
+function fallbackId(id){ const R = CONFIG.rootId; if (!find(id) && id.includes('_')) id = id.split('_')[0]; while (id !== R && !find(id)) id = id.length >= 11 ? id.slice(0,8) : id.length >= 8 ? id.slice(0,6) : R; return id; }
 
 /* ---------- stats (aggregated bottom-up) ---------- */
+function stFLN(n){   // FLN school, filtered by the selected class
+  const c = state.cls, studs = c ? n.students.filter(x => x.cls === c) : n.students;
+  const dist = [0,0,0,0], subj = SUBJ.map(() => [0,0,0,0]), errTypes = Array(ET.length).fill(0);
+  studs.forEach(x => { dist[x.overall]++; x.grades.forEach((g, i) => { if (g != null) subj[i][g]++; }); if (x.err >= 0) errTypes[x.err]++; });
+  return {part:studs.length ? 1 : 0, total:1, appeared:studs.length, enrolled:studs.length + (c ? n.absent[c - 1] : sum(n.absent)), dist, errors:sum(errTypes), errTypes, subj,
+    p1:0, p2:0, pb:0, pd1:[0,0,0,0], pd2:[0,0,0,0]};
+}
+const stC = (n, c) => { const p = state.cls; state.cls = c; const s = st(n); state.cls = p; return s; };   // stats for a given class
 function st(n){
-  if (n._s) return n._s;
+  const fc = n.fln ? (n._sc || (n._sc = {})) : null;
+  if (fc ? fc[state.cls] : n._s) return fc ? fc[state.cls] : n._s;
   let s;
-  if (n.type === 'school'){
+  if (n.type === 'school' && n.fln) s = stFLN(n);
+  else if (n.type === 'school'){
     const dist = [0,0,0,0], subj = SUBJ.map(() => [0,0,0,0]);
     const pd = m => { const d = [0,0,0,0]; n.students.forEach(x => { if (x.papers & m) d[x.overall]++; }); return d; };
     n.students.forEach(x => { dist[x.overall]++; x.grades.forEach((g, i) => { if (g != null) subj[i][g]++; }); });
@@ -468,7 +635,7 @@ function st(n){
     });
     if (n.type === 'cluster') s.total = n.totalSchools;
   }
-  return n._s = s;
+  return fc ? (fc[state.cls] = s) : (n._s = s);
 }
 const score = n => { const s = st(n); return s.appeared ? (s.dist[1] + 2*s.dist[2] + 3*s.dist[3]) / (3*s.appeared) : 0; };
 const rv = (x, k) => { const t = st(x); return {a:t.appeared ? t.dist[3] / t.appeared : 0, d:t.appeared ? t.dist[0] / t.appeared : 0, part:t.enrolled ? t.appeared / t.enrolled : 0, err:t.appeared ? t.errors / t.appeared : 0}[k]; };
@@ -488,7 +655,7 @@ function bankFor(subj){
   return raw.map((x, i) => typeof x === 'string' ? {q: base + i, t: x, p: 25 + Math.round(r() * 60)} : x);
 }
 function qPct(base, n, key){
-  const s = st(n), rr = mulberry32(hash(n.id + key + state.exam));
+  const s = st(n), rr = mulberry32(hash(n.id + key + state.exam + (isFLN() ? state.cls + CONFIG.cycle : '')));
   let p = Math.max(2, Math.min(98, base + (rr() - .5) * (n.type === 'school' ? 30 : 14)));
   if (s.appeared > 0 && s.appeared <= 20) p = Math.round(p / 100 * s.appeared) / s.appeared * 100;
   return Math.round(p);
@@ -514,7 +681,7 @@ function renderNav(){
      <button><svg viewBox="0 0 24 24"><path d="M3 11 12 3l9 8M5 10v10h14V10"/></svg>${esc(b)}</button>
      <button class="red"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>${esc(c)}</button>`;
 }
-const topbar = () => `<div class="topbar"><button class="ibtn" data-go="#/n/thane">${SVG.home}</button><div class="r"><button class="ibtn">?</button><button class="ibtn">${SVG.chat}</button><button class="ibtn">${SVG.bell}</button><button class="ibtn">${SVG.out}</button></div></div>
+const topbar = () => `<div class="topbar"><button class="ibtn" data-go="#/n/${CONFIG.rootId}">${SVG.home}</button><div class="r"><button class="ibtn">?</button><button class="ibtn">${SVG.chat}</button><button class="ibtn">${SVG.bell}</button><button class="ibtn">${SVG.out}</button></div></div>
   <nav class="tabs"><button class="tab on">Exams</button><button class="tab">My Post</button><button class="tab">Bookmark</button></nav>`;
 const aySel = () => `<select class="ay" data-ay>${CONFIG.academicYears.map(a => `<option ${a === state.ay ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select>`;
 function pageHeader(n, o = {}){
@@ -525,20 +692,27 @@ function crumbs(n, page){
   return `<div class="crumbs">${ancestors(n).map(a => `<a data-go="#/n/${a.id}">${esc(a.name)}</a><span class="sep">›</span>`).join(' ')}</div>`;
 }
 function examBlocks(withFilter){
-  return `<div class="lbl">Exam Type</div><div class="chips">${CONFIG.examTypes.map(e => `<button class="chip ${e === state.exam ? 'on' : ''}" data-exam="${esc(e)}">${esc(e)}</button>`).join('')}</div>
-    <div class="lbl">Cycle</div><div class="chips"><button class="chip cyc">${esc(CONFIG.cycle)}</button></div>
-    ${withFilter ? `<div class="lbl">Exam Filter</div><div class="scroll-x">${CONFIG.examFilters.map((f, i) => `<button class="chip flt ${i === state.ef ? 'on' : ''}" data-ef="${i}">${esc(f)}</button>`).join('')}</div>` : ''}`;
+  const F = isFLN();
+  return `<div class="lbl">Exam Type</div><div class="chips">${CONFIG.examTypes.map(e => `<button class="chip ${e === state.exam ? 'on' : ''}" data-exam="${esc(e)}">${esc(examLabel(e))}</button>`).join('')}</div>
+    <div class="lbl">Cycle</div><div class="chips">${CONFIG.cycles.map((c, i) => `<button class="chip ${i === state.fcyc ? 'cyc' : 'flt'}" data-fcyc="${i}">${esc(c)}</button>`).join('')}</div>
+    ${F ? `<div class="lbl">Classes</div><div class="scroll-x">${['All', ...CONFIG.classes].map((c, i) => `<button class="chip flt ${i === state.cls ? 'on' : ''}" data-cls="${i}">${esc(c)}</button>`).join('')}</div>` : ''}
+    ${withFilter && CONFIG.examFilters.length ? `<div class="lbl">Exam Filter</div><div class="scroll-x">${CONFIG.examFilters.map((f, i) => `<button class="chip flt ${i === state.ef ? 'on' : ''}" data-ef="${i}">${esc(f)}</button>`).join('')}</div>` : ''}`;
 }
-const gchip = g => `<span class="gchip g${g}">${L[g].key}</span>`;
+const gchip = g => `<span class="gchip g${g}">${lk(g)}</span>`;
 function distBar(d, thin){
   const t = sum(d) || 1;
-  return `<div class="dbar ${thin ? 'thin' : ''}">${d.map((v, i) => `<div style="flex:${v / t * 100} 1 0;background:${L[i].color}"><span>${fmtp(v / t * 100)}</span></div>`).join('')}</div>`;
+  return `<div class="dbar ${thin ? 'thin' : ''}">${d.map((v, i) => `<div style="flex:${v / t * 100} 1 0;background:${L[i].color}"><span>${CONFIG.barRound ? Math.round(v / t * 100) + '%' : fmtp(v / t * 100)}</span></div>`).join('')}</div>`;
 }
-const legend = () => `<div class="legend">${L.map(l => `<span><i style="background:${l.color}"></i>${l.key}: ${esc(l.name)}</span>`).join('')}</div>`;
+const legend = () => `<div class="legend">${L.map(l => `<span><i style="background:${l.color}"></i>${l.key}${CONFIG.legendSep}${esc(l.name)}</span>`).join('')}</div>`;
 function distCard(s, title, link){
   return `<div class="card pad"><div class="card-h"><span>${esc(title)}</span>${link ? `<a data-go="${link}">Details ↗</a>` : ''}</div>${legend()}${distBar(s.dist)}</div>`;
 }
 function statCards(s){
+  if (isFLN()) return `<div class="cards">
+    <div class="sc"><div class="v b">${fmt(s.part)}<small> /${fmt(s.total)}</small></div><div class="k">Schools participating</div></div>
+    <div class="sc"><div class="v g">${fmt(s.appeared)}</div><div class="k">Students appeared</div></div>
+    <div class="sc"><div class="v o">${pc(s.appeared, s.enrolled, 1)}%</div><div class="k">Student Participation rate</div></div>
+    <div class="sc"><div class="v r">${pc(s.errors, s.appeared, 1)}%</div><div class="k">Data errors</div></div></div>`;
   return `<div class="cards">
     <div class="sc"><div class="v b">${s.part}<small> /${fmt(s.total)}</small></div><div class="k">Schools participating</div></div>
     <div class="sc"><div class="v g">${fmt(s.appeared)}</div><div class="k">Students appeared</div></div></div>
@@ -549,6 +723,28 @@ function statCards(s){
 }
 const TYPE_LABEL = {district:'District', block:'Block', cluster:'Cluster', school:'School'};
 const CHILD_LABEL = {district:'Block', block:'Cluster', cluster:'School'};
+
+/* ---------- FLN: level trend over cycles (follows the same node in every cycle) ---------- */
+function trendCard(n){
+  const lv = state.trend, col = lv === 3 ? 'var(--blue)' : 'var(--red)';
+  const vals = CONFIG.cycles.map((c, i) => { const x = cycleDB(state.exam, c).byId[n.id], s = x && st(x); return s && s.appeared ? s.dist[lv] / s.appeared * 100 : null; });
+  const ok = vals.filter(v => v != null), W = 320, H = 150, pl = 34, pr = 18, top = 12, bot = 30;
+  let g = '';
+  if (ok.length){
+    let lo = Math.floor(Math.min(...ok)) - 2, hi = Math.ceil(Math.max(...ok)) + 2;
+    if (hi - lo < 6){ const m = (hi + lo) / 2; lo = m - 3; hi = m + 3; }
+    lo = Math.max(0, lo);
+    const yOf = v => top + (hi - v) / (hi - lo) * (H - top - bot), xOf = i => pl + 12 + i * ((W - pl - pr - 24) / (CONFIG.cycles.length - 1));
+    for (let k = 0; k < 4; k++){ const v = lo + k * (hi - lo) / 3;
+      g += `<line x1="${pl}" x2="${W - pr}" y1="${yOf(v)}" y2="${yOf(v)}" stroke="#e5e7eb"/><text x="${pl - 6}" y="${yOf(v) + 3}" text-anchor="end" font-size="9" fill="#6b7280">${Math.round(v)}%</text>`; }
+    CONFIG.cycles.forEach((c, i) => g += `<text x="${xOf(i)}" y="${H - 8}" text-anchor="middle" font-size="9" fill="#6b7280">${esc(c.replace(/ 20(\d\d)/, "'$1"))}</text>`);
+    const pts = vals.map((v, i) => v == null ? null : [xOf(i), yOf(v), v]).filter(Boolean);
+    if (pts.length > 1) g += `<polyline fill="none" stroke="${col}" stroke-width="2" points="${pts.map(p => p[0] + ',' + p[1]).join(' ')}"/>`;
+    pts.forEach(p => g += `<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="${col}"/><text x="${p[0]}" y="${p[1] + 14}" text-anchor="middle" font-size="9" fill="${col}">${Math.round(p[2])}%</text>`);
+  }
+  return `<div class="card pad" style="margin-top:12px"><div class="card-h"><span>Level Trend Over Cycles</span><div class="tgl">${[3, 0].map(i => `<button class="tg ${lv === i ? 'on' : ''}" data-trend="${i}">${L[i].key} ${i === 3 ? '↑' : '↓'}</button>`).join('')}</div></div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${L[lv].key} share across cycles" style="margin-top:8px">${g}</svg></div>`;
+}
 
 /* ---------- overview table (blocks / clusters / schools) ---------- */
 function colsFor(n){
@@ -569,8 +765,8 @@ function overviewTable(n){
   });
   const cell = (k, x) => {
     const v = colVal(k, x);
-    if (k === 'd') return `<span class="num g0">${v}</span>`;
-    if (k === 'a') return `<span class="num g3">${v}</span>`;
+    if (k === 'd') return `<span class="num g0">${isFLN() ? fmt(v) : v}</span>`;
+    if (k === 'a') return `<span class="num g3">${isFLN() ? fmt(v) : v}</span>`;
     if (k === 'sp' || k === 'stp') return `<b class="or">${Math.round(v * 100)}%</b>`;
     return v;
   };
@@ -580,18 +776,18 @@ function overviewTable(n){
   const tot = `<tr class="tot"><td style="background:#eaf1ff">${totalName}</td>${cols.slice(1).map(c => `<td>${cell(c.k, n)}</td>`).join('')}</tr>`;
   const label = {district:'Block-wise Overview', block:'Cluster-wise Overview', cluster:'School-wise Overview'}[n.type];
   return `<div class="lbl">${label}</div><div class="card"><div class="card-h" style="padding:13px 14px;border-bottom:1px solid var(--border)">All ${CHILD_LABEL[n.type]}s</div>
-    <div class="tw"><table class="ov"><thead><tr>${cols.map(th).join('')}</tr></thead><tbody>${tot}
+    <div class="tw${n.type === 'district' ? '' : ' v5'}"><table class="ov"><thead><tr>${cols.map(th).join('')}</tr></thead><tbody>${tot}
     ${kids.map(x => `<tr class="go" data-go="#/n/${x.id}">${nameCell(x)}${cols.slice(1).map(c => `<td>${cell(c.k, x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
 }
 
 /* ---------- shared blocks ---------- */
 function twoCards(n){
-  return `<div class="two"><div class="nav-card" data-go="#/acad/${n.id}"><div class="ic">📊</div><b>Academic Performance</b><span>Class-wise · Subject-wise · ${L[0].key}–${L[3].key}</span><em>View details →</em></div>
+  return `<div class="two"><div class="nav-card" data-go="#/acad/${n.id}"><div class="ic">📊</div><b>Academic Performance</b><span>Class-wise · Subject-wise · ${lk(0)}–${lk(3)}</span><em>View details →</em></div>
     <div class="nav-card" data-go="#/part/${n.id}"><div class="ic">📋</div><b>Participation &amp; Data</b><span>${n.type === 'school' ? 'Student attendance' : 'School &amp; student rates'} · Errors</span><em>View details →</em></div></div>`;
 }
 function perfItem(n, type, top, title, icon, cls){
   const r = ranked(n, type, top); if (!r.length) return '';
-  const txt = r.slice(0, 2).map(x => { const s = st(x); return `${esc(x.name)} · ${pc(s.dist[top ? 3 : 0], s.appeared)}% ${L[top ? 3 : 0].key}`; }).join(' | ');
+  const txt = r.slice(0, 2).map(x => { const s = st(x); return `${esc(x.name)} · ${pc(s.dist[top ? 3 : 0], s.appeared)}% ${lk(top ? 3 : 0)}`; }).join(' | ');
   return `<div class="li" data-go="#/rank${top ? 'T' : 'B'}${type === 'school' ? 'S' : 'C'}/${n.id}"><div class="ic ${cls}">${icon}</div><div class="tx"><b>${title}</b><span>${txt}</span></div><div class="ar">→</div></div>`;
 }
 function perfList(n){
@@ -614,16 +810,17 @@ function viewOverview(n){
   const s = st(n); let h = '';
   if (n.type === 'district'){
     h += `<section class="hero"><div class="brand-row"><div class="logo">📚</div><div><div class="brand">${esc(CONFIG.program)}</div><div class="tag">${esc(CONFIG.tagline)}</div></div></div>
-      <div class="who"><span class="pill"><i class="dot"></i>${esc(CONFIG.districtName)} · ${esc(CONFIG.role)}</span>${aySel()}</div>${examBlocks()}</section>`;
+      <div class="who"><span class="pill"><i class="dot"></i>${esc(CONFIG.districtName)} · ${esc(CONFIG.role)}</span>${aySel()}</div>${examBlocks(true)}</section>`;
   } else {
-    h += pageHeader(n) + crumbs(n) + `<div class="sec">${examBlocks(n.type === 'school')}</div>`;
+    h += pageHeader(n) + crumbs(n) + `<div class="sec">${examBlocks(true)}</div>`;
   }
   h += '<div class="sec">';
   if (n.type !== 'school') h += searchBox(n);
   h += `<div class="lbl">${TYPE_LABEL[n.type]} Summary${n.type === 'school' ? '' : ' · ' + esc(CONFIG.cycle).toUpperCase()}</div>${statCards(s)}
     <div style="margin-top:12px">${distCard(s, n.type === 'school' ? 'Level Distribution – School' : 'Student Level Distribution', '#/acad/' + n.id)}</div>`;
+  if (CONFIG.cycles.length > 1) h += trendCard(n);
   if (n.type === 'school'){
-    h += `<div class="lbl">Student-wise Results</div><div class="chips" style="margin-bottom:10px">${CONFIG.classes.map((c, i) => `<button class="chip ${i === 0 ? 'on' : ''}">${esc(c)}</button>`).join('')}</div>${studentTable(n)}`;
+    h += `<div class="lbl">Student-wise Results</div>${studentTable(n)}`;
   } else {
     h += overviewTable(n);
   }
@@ -631,75 +828,88 @@ function viewOverview(n){
   if (n.type !== 'school') h += `</div><button class="dl" data-xls="rep">⬇ Download Reports</button><div class="sec">`;
   return h + '</div>';
 }
+const OMR_ICON = '<svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h8"/></svg>';
+function swClasses(n){   // classes that have results in this school, for the selected programme
+  return isFLN() ? CONFIG.classes.map((c, i) => [i + 1, c]).filter(([k]) => n.students.some(x => x.cls === k)) : CONFIG.classes.map((c, i) => [i + 1, c]);
+}
 function studentTable(n){
-  const rows = n.students.map((x, i) => `<tr class="go" data-go="#/n/${x.key}"><td class="stu"><span class="av a${i % 3}">S4</span><div>${esc(x.name)}<small>Roll ${x.roll}</small></div></td>${x.grades.map(g => `<td>${g == null ? '—' : gchip(g)}</td>`).join('')}<td>${gchip(x.overall)}</td></tr>`).join('');
-  return `<div class="card"><div class="band"><span>${esc(CONFIG.classes[0]).toUpperCase()}</span></div>
-    <div class="tw"><table style="min-width:430px"><thead><tr><th>Student</th>${SUBJ.map(s => `<th>${esc(s)}</th>`).join('')}<th>Overall</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  const cls = swClasses(n);
+  if (!cls.length) return `<div class="card"><div class="info">No student results for this school.</div></div>`;
+  const pick = state.sw && state.sw.id === n.id ? state.sw.c : (state.cls && cls.some(([k]) => k === state.cls) ? state.cls : cls[0][0]);
+  const cur = cls.find(([k]) => k === pick) || cls[0];
+  const list = isFLN() ? n.students.filter(x => x.cls === cur[0]) : n.students;
+  const rows = list.map((x, i) => `<tr class="go" data-go="#/n/${x.key}"><td class="stu"><span class="av a${i % 2}">S${i + 1}</span><div>${esc(x.name)}<small>Roll ${x.roll}</small></div></td>${x.grades.map(g => `<td>${g == null ? '—' : gchip(g)}</td>`).join('')}<td>${gchip(x.overall)}</td></tr>`).join('');
+  return `<div class="scroll-x" style="margin-bottom:10px">${cls.map(([k, c]) => `<button class="chip swc ${k === cur[0] ? 'on' : ''}" data-sw="${n.id}:${k}">${esc(c)}</button>`).join('')}</div>
+    <div class="card"><div class="band"><span>${esc(cur[1]).toUpperCase()}</span><button class="omr" type="button">${OMR_ICON}OMR ${CONFIG.omrSheets}</button></div>
+    <div class="tw"><table class="sw" style="min-width:${120 + (SUBJ.length + 1) * 80}px"><thead><tr><th>Student</th>${SUBJ.map(x => `<th>${esc(x)}</th>`).join('')}<th>Overall</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 /* ---------- student page ---------- */
-const SCOL = ['#f59e0b', '#16a34a', '#dc2626', '#2563eb'], SDASH = ['2 3', '5 3', '5 3', ''], SORDER = [3, 1, 0, 2];
+const SCOL = ['#f59e0b', '#16a34a', '#dc2626', '#2563eb'], SDASH = ['2 3', '5 3', '5 3', ''];
+const jAnchor = () => state.fcyc;   // the selected cycle
 const BARCOL = ['#dc2626', '#ea580c', '#f59e0b', '#16a34a'], MAXM = 50, MR = [[5, 19], [20, 29], [30, 37], [38, 50]];
-function gradeAt(x, si, c){
-  const last = CONFIG.journeyCycles.length - 1, g = x.grades[si];
-  if (g == null || c === last) return g;
-  const r = mulberry32(hash(x.key + si + c)), d = r() < .6 ? (r() < .5 ? -1 : 1) * (1 + (r() < .3 ? 1 : 0)) : 0;
-  return Math.max(0, Math.min(3, g + d));
+function gradeAt(x, si, c){   // the student's grade in cycle c, from that cycle's data (null if not assessed)
+  if (c === jAnchor()) return x.grades[si];
+  const o = cycleDB(state.exam, CONFIG.journeyCycles[c]).byId[x.key];
+  return o && o.stu ? o.stu.grades[si] : null;
 }
 function marksAt(x, si, c, g){ const [lo, hi] = MR[g], r = mulberry32(hash(x.key + 'm' + si + c)); return lo + Math.floor(r() * (hi - lo + 1)); }
 function journeyChart(x){
-  const cy = CONFIG.journeyCycles, W = 320, H = 190, pl = 30, pr = 18, top = 14, bot = 34;
+  const cy = CONFIG.journeyCycles, SORDER = CONFIG.journeyOrder, W = 320, H = 190, pl = lk(3).length > 2 ? 42 : 30, pr = 18, top = 14, bot = 34;
   const yOf = g => top + (3 - g) * ((H - top - bot) / 3);
   const xOf = c => cy.length === 1 ? (pl + (W - pl - pr) / 2) : pl + 24 + c * ((W - pl - pr - 48) / (cy.length - 1));
   let g = '';
-  for (let k = 0; k < 4; k++) g += `<line x1="${pl}" x2="${W - pr}" y1="${yOf(k)}" y2="${yOf(k)}" stroke="#e5e7eb" stroke-dasharray="3 3"/><text x="${pl - 8}" y="${yOf(k) + 4}" text-anchor="end" font-size="11" fill="#6b7280">${L[k].key}</text>`;
+  for (let k = 0; k < 4; k++) g += `<line x1="${pl}" x2="${W - pr}" y1="${yOf(k)}" y2="${yOf(k)}" stroke="#e5e7eb" stroke-dasharray="3 3"/><text x="${pl - 8}" y="${yOf(k) + 4}" text-anchor="end" font-size="11" fill="#6b7280">${lk(k)}</text>`;
   cy.forEach((c, i) => g += `<text x="${xOf(i)}" y="${H - 12}" text-anchor="middle" font-size="10" fill="#6b7280">${esc(c.replace(/20(\d\d)/, '$1'))}</text>`);
   SORDER.forEach((si, k) => {
-    const off = (k - 1.5) * 5, pts = cy.map((c, i) => [xOf(i) + off, gradeAt(x, si, i)]).filter(p => p[1] != null);
+    const two = SORDER.length < 3, off = (k - (SORDER.length - 1) / 2) * (two ? 8 : 5), pts = cy.map((c, i) => [xOf(i) + off, gradeAt(x, si, i)]).filter(p => p[1] != null);
     if (pts.length > 1) g += `<polyline fill="none" stroke="${SCOL[si]}" stroke-width="2" stroke-dasharray="${SDASH[si]}" points="${pts.map(p => p[0] + ',' + yOf(p[1])).join(' ')}"/>`;
-    pts.forEach(p => g += `<circle cx="${p[0]}" cy="${yOf(p[1])}" r="5" fill="${SCOL[si]}"/><text x="${p[0]}" y="${yOf(p[1]) + (p[1] === 0 ? -9 : 15)}" text-anchor="middle" font-size="8" fill="#6b7280">${L[p[1]].key}</text>`);
+    pts.forEach(p => g += `<circle cx="${p[0]}" cy="${yOf(p[1])}" r="5" fill="${SCOL[si]}"/><text x="${p[0]}" y="${yOf(p[1]) + ((two ? k === 0 : p[1] === 0) && p[1] !== 3 ? -9 : 15)}" text-anchor="middle" font-size="8" fill="#6b7280">${lk(p[1])}</text>`);
   });
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Subject level journey">${g}</svg>`;
 }
 function viewStudent(n){
-  const x = n.stu, sch = n.parent, cy = CONFIG.journeyCycles, last = cy.length - 1, ci = state.cyc == null ? last : Math.min(state.cyc, last);
+  const x = n.stu, sch = n.parent, cy = CONFIG.journeyCycles, SORDER = CONFIG.journeyOrder, F = isFLN(), last = cy.length - 1, ci = state.cyc == null ? jAnchor() : Math.min(state.cyc, last);
   let tot = 0, max = 0;
   const rows = SORDER.map(si => {
     const g = gradeAt(x, si, ci);
     if (g == null) return `<div class="sp"><div class="spn">${esc(SUBJ[si])}</div><div>—</div><div class="spbar"></div><div class="spm">absent</div></div>`;
+    if (F) return `<div class="sp"><div class="spn">${esc(SUBJ[si])}</div>${gchip(g)}<div class="spbar"><i style="width:${(g + 1) * 25}%;background:${BARCOL[g]}"></i></div><div class="spm"></div></div>`;   // level only, no marks
     const m = marksAt(x, si, ci, g); tot += m; max += MAXM;
     return `<div class="sp"><div class="spn">${esc(SUBJ[si])}</div>${gchip(g)}<div class="spbar"><i style="width:${m / MAXM * 100}%;background:${BARCOL[g]}"></i></div><div class="spm">${m}/${MAXM}</div></div>`;
   }).join('');
   const tp = max ? tot / max * 100 : 0, tg = tp >= 75 ? 3 : tp >= 60 ? 2 : tp >= 40 ? 1 : 0;
   const legendHtml = `<div class="jl">${SORDER.map(si => `<span><svg width="22" height="6"><line x1="0" x2="22" y1="3" y2="3" stroke="${SCOL[si]}" stroke-width="2" stroke-dasharray="${SDASH[si]}"/></svg>${esc(SUBJ[si])}</span>`).join('')}</div>`;
-  return pageHeader(n, {title:x.name, sub:`${CONFIG.classes[0]} · Roll ${x.roll} · ${sch.title}`}) +
+  return pageHeader(n, {title:x.name, sub:`${F ? 'Class ' + x.cls : CONFIG.classes[0]} · Roll ${x.roll} · ${sch.title}`}) +
     `<div class="sec"><div class="card pad" style="margin-top:14px"><div class="card-h"><span>Subject Level Journey</span></div>${legendHtml}${journeyChart(x)}</div>
      <div class="eh"><div class="lbl">Subject-wise Performance</div><select class="ay" style="padding:8px 28px 8px 10px" data-cyc>${cy.map((c, i) => `<option value="${i}" ${i === ci ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
-     <div class="card">${rows}<div class="tot2"><span>Total Score</span><b style="color:${L[tg].color}">${tot}/${max} · ${tp.toFixed(2)}%</b></div></div></div>`;
+     <div class="card">${rows}${F ? '' : `<div class="tot2"><span>Total Score</span><b style="color:${L[tg].color}">${tot}/${max} · ${tp.toFixed(2)}%</b></div>`}</div></div>`;
 }
 function distBarKeys(d){
   const t = sum(d) || 1;
-  return `<div class="dbar">${d.map((v, i) => `<div style="flex:${v / t * 100} 1 0;background:${L[i].color}"><span>${L[i].key}</span></div>`).join('')}</div>`;
+  return `<div class="dbar">${d.map((v, i) => `<div style="flex:${v / t * 100} 1 0;background:${L[i].color}"><span>${lk(i)}</span></div>`).join('')}</div>`;
 }
 function viewAcad(n){
-  const s = st(n), kids = (n.children && n.children.length) ? n.children : [];
+  const F = isFLN(), s = F ? stC(n, 0) : st(n), kids = (n.children && n.children.length) ? n.children : [];
   const cells = d => { const t = sum(d); return L.map((l, i) => `<td><span class="gp" style="color:${l.color}">${fmtp(t ? d[i] / t * 100 : 0)}</span><small>${d[i]}</small></td>`).join(''); };
-  const head = first => `<thead><tr><th>${first}</th>${L.map(l => `<th style="color:${l.color};text-align:center">${l.key}</th>`).join('')}</tr></thead>`;
+  const head = first => `<thead><tr><th>${first}</th>${L.map((l, i) => `<th style="color:${l.color};text-align:center">${lk(i)}</th>`).join('')}</tr></thead>`;
+  const tabs = k => `<div class="scroll-x" style="margin-bottom:10px">${['All', ...CONFIG.classes].map((c, i) => `<button class="chip flt ${i === state[k] ? 'on' : ''}" data-acls="${k}:${i}">${esc(c)}</button>`).join('')}</div>`;
+  const subjRows = c => { const t = stC(n, c); return SUBJ.map((name, i) => `<tr><td>${esc(name)}<span class="arr">→</span></td>${cells(t.subj[i])}</tr>`).join(''); };
   const clsChips = `<div class="chips" style="margin-bottom:10px">${CONFIG.classes.map((c, i) => `<button class="chip ${i === 0 ? 'on' : ''}">${esc(c)}</button>`).join('')}</div>`;
   const tbl = (first, rows) => `<div class="card"><div class="tw"><table class="gt">${head(first)}<tbody>${rows}</tbody></table></div></div>`;
   const clsNum = c => c.replace(/\D/g, '') || c;
   return pageHeader(n, {title:'Academic Performance'}) + crumbs(n, 'Academic Performance') +
-    `<div class="sec"><div class="infobox"><span class="ii">i</span><span><b>${L[3].key} = Nipun</b> (Proficient) in this programme</span></div>
+    `<div class="sec"><div class="infobox"><span class="ii">i</span><span><b>${L[3].key} = ${esc(CONFIG.nipunLabel)}</b> (Proficient) in this programme</span></div>
      <div class="lbl">Overall · All Students</div>
-     <div class="card pad"><div class="tiles">${L.map((l, i) => `<div class="tile t${i}" style="color:${l.color}"><b>${fmtp(s.appeared ? s.dist[i] / s.appeared * 100 : 0)}</b><span>${l.key}</span><small>${s.dist[i]}</small></div>`).join('')}</div>
+     <div class="card pad"><div class="tiles">${L.map((l, i) => `<div class="tile t${i}" style="color:${l.color}"><b>${fmtp(s.appeared ? s.dist[i] / s.appeared * 100 : 0)}</b><span>${lk(i)}</span><small>${s.dist[i]}</small></div>`).join('')}</div>
        <div style="margin-top:10px">${distBarKeys(s.dist)}</div>${legend()}</div>
-     <div class="lbl">Subject-wise · All Classes</div>${clsChips}
-     ${tbl('Subject', `<tr><td>PAPER 1</td>${cells(s.pd1)}</tr><tr><td>PAPER 2</td>${cells(s.pd2)}</tr>`)}
+     <div class="lbl">Subject-wise · ${F ? (state.acs ? esc(CONFIG.classes[state.acs - 1]) : 'All Classes') : 'All Classes'}</div>${F ? tabs('acs') : clsChips}
+     ${F ? tbl('Subject', subjRows(state.acs)) : tbl('Subject', `<tr><td>PAPER 1</td>${cells(s.pd1)}</tr><tr><td>PAPER 2</td>${cells(s.pd2)}</tr>`)}
      <div class="lbl">Class-wise · All Subjects</div>
-     ${tbl('Class', CONFIG.classes.map(c => `<tr><td>${esc(clsNum(c))}</td>${cells(s.dist)}</tr>`).join(''))}
-     <div class="lbl">Class × Subject Breakdown</div>${clsChips}
-     ${tbl('Subject', SUBJ.map((name, i) => `<tr><td>${esc(name)}<span class="arr">→</span></td>${cells(s.subj[i])}</tr>`).join(''))}
+     ${tbl('Class', CONFIG.classes.map((c, i) => `<tr><td>${esc(clsNum(c))}</td>${cells(F ? stC(n, i + 1).dist : s.dist)}</tr>`).join(''))}
+     <div class="lbl">Class × Subject Breakdown</div>${F ? tabs('acb') : clsChips}
+     ${F ? tbl('Subject', subjRows(state.acb)) : tbl('Subject', SUBJ.map((name, i) => `<tr><td>${esc(name)}<span class="arr">→</span></td>${cells(s.subj[i])}</tr>`).join(''))}
      ${kids.length ? `<div class="lbl">${CHILD_LABEL[n.type]}-wise · All Classes &amp; Subjects</div>
-       ${tbl(CHILD_LABEL[n.type], kids.map(x => `<tr class="go" data-go="#/acad/${x.id}"><td class="wrap">${esc(x.title)}</td>${cells(st(x).dist)}</tr>`).join(''))}` : ''}
+       ${tbl(CHILD_LABEL[n.type], kids.map(x => `<tr class="go" data-go="#/acad/${x.id}"><td class="wrap">${esc(x.title)}</td>${cells(F ? stC(x, 0).dist : st(x).dist)}</tr>`).join(''))}` : ''}
      </div>`;
 }
 function viewPart(n){
@@ -719,7 +929,7 @@ function viewPart(n){
       </tbody></table></div></div>`;
   }).join('');
   const errRows = ET.map((e, i) => `<tr><td class="wrap" style="font-weight:500">${esc(e)}</td><td class="c${s.errTypes[i] ? 1 : 0}">${s.errTypes[i]}</td><td class="c${s.errTypes[i] ? 1 : 0}">${pc(s.errTypes[i], s.appeared, 1)}%</td></tr>`).join('');
-  return pageHeader(n, {title:'Participation & Data'}) +
+  return pageHeader(n, {title:'Participation & Data', sub:isFLN() ? `${n.name} · ${CONFIG.cycle} · ${state.cls ? CONFIG.classes[state.cls - 1] : 'All Classes'}` : ''}) +
     `<div class="sec">${tables}
      <div class="eh"><div class="lbl">Data Error Types</div><button class="xls" data-xls="err">⬇ XLS</button></div>
      <div class="card"><table><thead><tr><th>Error type</th><th>Count</th><th>%</th></tr></thead><tbody>${errRows}
@@ -732,23 +942,23 @@ function rankRows(n, view){
   return {all, shown:R.rows === 'all' ? all : all.slice(0, R.rows), R, type, top};
 }
 function viewRank(n, view){
-  const [title, badge] = RANK_TITLES[view], {all, shown, R, type, top} = rankRows(n, view);
-  const chips = [[top ? 'a' : 'd', '% ' + L[top ? 3 : 0].key], ['part', 'Students Part.'], ['err', 'Data Errors']];
+  const [title] = RANK_TITLES[view], {all, shown, R, type, top} = rankRows(n, view);
+  const chips = [[top ? 'a' : 'd', '% ' + lk(top ? 3 : 0)], ['part', 'Students Part.'], ['err', 'Data Errors']];
   const rows = shown.map((x, i) => { const t = st(x), e = rv(x, 'err');
     return `<tr class="go" data-go="#/n/${x.id}"><td>${i + 1}</td><td class="rname"><i class="rdot" style="background:${t.errors ? 'var(--orange)' : 'var(--green)'}"></i>${esc(x.title)}</td>
       <td class="ra">${pc(t.dist[3], t.appeared)}%</td><td class="rd">${pc(t.dist[0], t.appeared)}%</td><td><b>${t.appeared}</b></td>
       <td class="rm2">${Math.round(rv(x, 'part') * 100)}%</td><td class="${e ? 're' : 'ra'}">${Math.round(e * 100)}%</td><td><b>${fmt(t.enrolled)}</b></td></tr>`; }).join('');
-  return pageHeader(n, {title, badge, sub:`${n.name} · ${state.exam} · ${CONFIG.cycle}`}) + crumbs(n, title) +
+  return pageHeader(n, {title, sub:`${n.name} · ${examLabel(state.exam)} · ${CONFIG.cycle}${isFLN() && state.cls ? ' · ' + CONFIG.classes[state.cls - 1] : ''}`}) + crumbs(n, title) +
     `<div class="rkctl"><div class="rkrow"><span class="lb2">SORT BY</span>${chips.map(([k, l]) => `<button class="sch ${R.key === k ? 'on' : ''}" data-rk="${k}">${l}</button>`).join('')}</div>
       <div class="rkrow" style="justify-content:space-between"><div style="display:flex;align-items:center;gap:10px"><span class="lb2">SHOW</span>
         <select class="rows" data-rows>${[10, 20, 50, 'all'].map(v => `<option value="${v}" ${R.rows === v ? 'selected' : ''}>${v === 'all' ? 'All rows' : v + ' rows'}</option>`).join('')}</select></div>
         <button class="xls big" data-xls="rank">⬇ XLS</button></div></div>
     <div class="info" style="border-top:1px solid var(--border)">Showing ${shown.length} of ${all.length} ${type}s</div>
-    <div class="tw"><table class="rkt"><thead><tr><th>#</th><th>${type === 'school' ? 'School' : 'Cluster'}</th><th>${L[3].key}%</th><th>${L[0].key}%</th><th>Assessed</th><th>Stu%</th><th>Err%</th><th>Total Students</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    <div class="tw"><table class="rkt"><thead><tr><th>#</th><th>${type === 'school' ? 'School' : 'Cluster'}</th><th>${lk(3)}%</th><th>${lk(0)}%</th><th>Assessed</th><th>Stu%</th><th>Err%</th><th>Total Students</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function exportRank(n, view){
   const [title, , type] = RANK_TITLES[view], {shown} = rankRows(n, view);
-  downloadXls(`${title}_${n.id}_${state.exam}_${CONFIG.cycle}`, [{title:title + ' – ' + n.title, head:['#', type === 'school' ? 'School' : 'Cluster', L[3].key + '%', L[0].key + '%', 'Assessed', 'Stu%', 'Err%', 'Total Students'],
+  downloadXls(`${title}_${n.id}_${state.exam}_${CONFIG.cycle}`, [{title:title + ' – ' + n.title, head:['#', type === 'school' ? 'School' : 'Cluster', lk(3) + '%', lk(0) + '%', 'Assessed', 'Stu%', 'Err%', 'Total Students'],
     rows:shown.map((x, i) => { const t = st(x); return [i + 1, x.title, pc(t.dist[3], t.appeared) + '%', pc(t.dist[0], t.appeared) + '%', t.appeared, Math.round(rv(x, 'part') * 100) + '%', Math.round(rv(x, 'err') * 100) + '%', t.enrolled]; })}]);
 }
 function viewQ(n, kind){
@@ -762,7 +972,7 @@ function viewQ(n, kind){
     <div><div class="qt" data-full="${esc(x.t)}">${esc(x.t)}</div><div class="qbar"><i style="width:${x.pct}%;background:${col}"></i></div></div>
     <div class="qp" style="color:${col}">${x.pct}%</div></div>`).join('');
   return pageHeader(n, {title}) + crumbs(n, title) +
-    `<div class="sec"><div class="lbl" style="margin-top:12px">Class</div><div class="chips">${CONFIG.classes.map((c, i) => `<button class="chip sm ${i === 0 ? 'on' : ''}">${esc(c)}</button>`).join('')}</div></div>
+    `<div class="sec"><div class="lbl" style="margin-top:12px">Class</div><div class="chips">${isFLN() ? ['All', ...CONFIG.classes].map((c, i) => `<button class="chip flt ${i === state.cls ? 'on' : ''}" data-cls="${i}">${esc(c)}</button>`).join('') : CONFIG.classes.map((c, i) => `<button class="chip sm ${i === 0 ? 'on' : ''}">${esc(c)}</button>`).join('')}</div></div>
      <div class="info" style="margin-top:10px;border-top:1px solid var(--border)">Showing ${list.length} of ${all.length} questions</div>
      <div class="sec"><div class="scroll-x" style="margin-top:14px">${CONFIG.questionSubjects.map((s, i) => `<button class="chip ${i === state.qs ? 'on' : ''}" data-qsub="${i}">${esc(s)}</button>`).join('')}</div>
      <div class="cap">${esc(n.title)} · ${esc(subj)} · ${esc(CONFIG.cycle)} · ${kind === 'top' ? 'Most students got right' : 'Most students got wrong'} · Showing all ${list.length} · ${kind === 'top' ? 'highest to lowest' : 'lowest to highest'}</div>
@@ -814,10 +1024,22 @@ function exportReport(n){
   downloadXls(`Report_${n.id}_${state.exam}_${CONFIG.cycle}`, [...secs, ...errSections(n).slice(1, 2)]);
 }
 
+/* height of a .v5 overview = header + total + 5 rows; the rest scrolls */
+function fitV5(){
+  document.querySelectorAll('.tw.v5').forEach(w => {
+    const head = w.querySelector('thead'), rows = [...w.querySelectorAll('tbody tr')];
+    w.querySelectorAll('tr.tot td').forEach(td => td.style.top = head.offsetHeight + 'px');
+    const kids = rows.filter(r => !r.classList.contains('tot'));
+    if (kids.length <= 5){ w.style.maxHeight = ''; return; }
+    const tot = rows.find(r => r.classList.contains('tot'));
+    w.style.maxHeight = (head.offsetHeight + (tot ? tot.offsetHeight : 0) + kids.slice(0, 5).reduce((a, r) => a + r.offsetHeight, 0) + 1) + 'px';
+  });
+}
+
 /* ---------- router + events ---------- */
 function route(){
   const m = location.hash.match(/^#\/(\w+)\/(\w+)$/);
-  let view = m ? m[1] : 'n', id = fallbackId(m ? m[2] : 'thane');
+  let view = m ? m[1] : 'n', id = fallbackId(m ? m[2] : CONFIG.rootId);
   return {view, id};
 }
 function render(){
@@ -831,7 +1053,7 @@ function render(){
   else if (view === 'qhard') body = viewQ(n, 'hard');
   else body = viewOverview(n);
   document.getElementById('app').innerHTML = topbar() + '<main>' + body + '</main>';
-  requestAnimationFrame(fitAll);
+  requestAnimationFrame(() => { fitAll(); fitV5(); });
 }
 function backTarget(){
   const {view, id} = route(), n = find(id);
@@ -845,7 +1067,9 @@ document.addEventListener('click', e => {
   const back = t.closest('[data-back]');
   if (back){ const id = backTarget(); if (id) location.hash = '#/n/' + id; return; }
   const ex = t.closest('[data-exam]');
-  if (ex){ state.exam = ex.dataset.exam; const {view, id} = route(); const nid = fallbackId(id); history.replaceState(null, '', `#/${view}/${nid}`); render(); return; }
+  if (ex){ state.exam = ex.dataset.exam; state.fcyc = null; state.cyc = null; state.ef = 0; state.sw = null; applyProfile();
+    if (state.qs >= CONFIG.questionSubjects.length) state.qs = 0;
+    const {view, id} = route(); const nid = fallbackId(id); history.replaceState(null, '', `#/${view}/${nid}`); render(); return; }
   const so = t.closest('[data-sort]');
   if (so){ const k = so.dataset.sort; state.sort = state.sort.key === k ? {key:k, dir:-state.sort.dir} : {key:k, dir:1}; render(); return; }
   const qs = t.closest('[data-qsub]'); if (qs){ state.qs = +qs.dataset.qsub; render(); return; }
@@ -854,11 +1078,17 @@ document.addEventListener('click', e => {
   const ex2 = t.closest('[data-exp]'); if (ex2){ state.exp[ex2.dataset.exp] = !state.exp[ex2.dataset.exp]; render(); return; }
   const rk = t.closest('[data-rk]'); if (rk){ const v = route().view; state.rk[v].key = rk.dataset.rk; render(); return; }
   const ef = t.closest('[data-ef]'); if (ef){ state.ef = +ef.dataset.ef; render(); return; }
+  const sw = t.closest('[data-sw]'); if (sw){ const [id, c] = sw.dataset.sw.split(':'); state.sw = {id, c:+c}; render(); return; }
+  const fc = t.closest('[data-fcyc]');   // cycle
+  if (fc){ state.fcyc = +fc.dataset.fcyc; state.cyc = null; applyProfile(); const {view, id} = route(); history.replaceState(null, '', `#/${view}/${fallbackId(id)}`); render(); return; }
+  const cf = t.closest('[data-cls]'); if (cf){ state.cls = +cf.dataset.cls; state.sw = null; render(); return; }   // FLN class filter
+  const ac = t.closest('[data-acls]'); if (ac){ const [k, v] = ac.dataset.acls.split(':'); state[k] = +v; render(); return; }
+  const tr = t.closest('[data-trend]'); if (tr){ state.trend = +tr.dataset.trend; render(); return; }
   const xl = t.closest('[data-xls]'); if (xl){ const {view, id} = route(), n = find(id); xl.dataset.xls === 'err' ? exportErrors(n) : xl.dataset.xls === 'rank' ? exportRank(n, view) : exportReport(n); return; }
   const go = t.closest('[data-go]'); if (go){ location.hash = go.dataset.go; }
 });
 document.addEventListener('change', e => {
-  if (e.target.matches('[data-ay]')) state.ay = e.target.value;
+  if (e.target.matches('[data-ay]')){ state.ay = e.target.value; state.fcyc = null; state.cyc = null; applyProfile(); const {view, id} = route(); history.replaceState(null, '', `#/${view}/${fallbackId(id)}`); render(); }
   if (e.target.matches('[data-rows]')){ const v = route().view; state.rk[v].rows = e.target.value === 'all' ? 'all' : +e.target.value; render(); }
   if (e.target.matches('[data-cyc]')){ state.cyc = +e.target.value; render(); }
 });
@@ -870,9 +1100,9 @@ document.addEventListener('input', e => {
   box.innerHTML = hits.length ? hits.map(s => `<div class="sr" data-go="#/n/${s.id}">${esc(s.name)}<small>${s.id} · ${esc(s.parent.name)}</small></div>`).join('') : '<div class="sr">No school found</div>';
 });
 window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
-let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(fitAll, 120); });
+let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { fitAll(); fitV5(); }, 120); });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitAll);
-renderNav(); render();
+applyProfile(); renderNav(); render();
 </script>
 </body>
 </html>

@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vinoba Analytics</title>
+<style>
+  :root{
+    --page:#f3f4f6; --text:#111827; --muted:#9aa3b2; --sub:#6b7280; --border:#e6e8ec;
+    --accent:#e8573a; --blue:#2563eb; --green:#16a34a; --orange:#ea580c; --red:#dc2626;
+    --mono:ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari","Mangal",Arial,sans-serif;background:var(--page);color:var(--text);padding-bottom:74px}
+  button{font:inherit;cursor:pointer;color:inherit}
+  a{color:inherit}
+  .app{max-width:480px;margin:0 auto;background:#fff;min-height:100vh}
+
+  /* ---------- Top section (icons + tabs) ---------- */
+  .topbar{display:flex;justify-content:space-between;align-items:center;padding:10px 20px 8px;background:#fff}
+  .topbar .r{display:flex;gap:26px;align-items:center}
+  .ico{width:22px;height:22px;fill:#111;display:block}
+  .ibtn{background:none;border:0;display:flex;align-items:center;font-size:20px;font-weight:700}
+  .tabs{position:sticky;top:0;z-index:30;display:flex;justify-content:space-around;padding:14px 12px 10px;
+    background:linear-gradient(rgba(0,0,0,.74),rgba(0,0,0,.74)),
+      repeating-linear-gradient(45deg,#e8573a 0 14px,#2563eb 14px 28px,#16a34a 28px 42px,#d97706 42px 56px)}
+  .tab{color:#d1d5db;font-weight:700;font-size:16px;padding-bottom:3px;border:0;background:none}
+  .tab.on{color:#fff;border-bottom:2px solid #fff}
+
+  /* ---------- Header row ---------- */
+  .hdr{display:flex;align-items:center;gap:12px;padding:12px 14px 8px}
+  .back{width:38px;height:38px;border:1px solid var(--border);border-radius:10px;background:#f3f5f9;font-size:19px;flex-shrink:0}
+  .hdr-t{flex:1;min-width:0}
+  .ttl{font-size:14px;font-weight:500;line-height:1.3;word-break:break-word;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .ttl .badge{font-size:10px;font-weight:700;background:var(--blue);color:#fff;border-radius:5px;padding:2px 5px}
+  .hsub{font-size:12px;color:#555;margin-top:1px}
+  select.ay{appearance:none;-webkit-appearance:none;border:1px solid var(--border);border-radius:10px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23111' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 11px center;
+    padding:11px 30px 11px 12px;font:700 12px var(--mono);color:#111;flex-shrink:0}
+  .crumbs{padding:8px 14px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);font-size:13px;color:#555;line-height:1.5}
+  .crumbs a{cursor:pointer;text-decoration:none}
+  .crumbs b{color:#111}
+  .crumbs .sep{color:var(--muted);margin:0 4px}
+
+  /* ---------- Hero (district) ---------- */
+  .hero{background:linear-gradient(180deg,#fff 0%,#f0f4fb 100%);padding:14px 14px 14px;border-bottom:1px solid var(--border)}
+  .brand-row{display:flex;align-items:center;gap:12px}
+  .logo{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#f0734a,#f59e63);display:grid;place-items:center;font-size:24px}
+  .brand{font:700 19px var(--mono)}
+  .tag{font:11px var(--mono);letter-spacing:.08em;color:var(--sub);margin-top:2px}
+  .who{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}
+  .pill{display:flex;align-items:center;gap:7px;background:#e9edf3;border:1px solid var(--border);border-radius:999px;padding:8px 11px;font-size:12px;font-weight:500;white-space:nowrap;min-width:0}
+  .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block}
+
+  /* ---------- Sections ---------- */
+  .sec{padding:0 14px}
+  .lbl{font:12px var(--mono);letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin:16px 0 8px}
+  .chips{display:flex;gap:10px;flex-wrap:wrap}
+  .chip{border:1px solid var(--border);background:#fff;border-radius:11px;padding:11px 15px;font-size:14px;font-weight:600;color:#444}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chip.cyc{font:13px var(--mono);padding:7px 12px;border-radius:8px;border-color:#6b93f0;background:#eaf1ff;color:var(--blue)}
+  .chip.flt{font:13px var(--mono);padding:7px 12px;border-radius:8px;white-space:nowrap}
+  .chip.flt.on{background:#eaf1ff;border-color:#6b93f0;color:var(--blue)}
+  .chip.sm{padding:7px 14px;border-radius:999px;font-size:13px}
+  .chip.sm.on{background:#eaf1ff;border-color:#6b93f0;color:var(--blue)}
+  .scroll-x{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
+
+  .search{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:12px;padding:0 14px;background:#fff}
+  .search input{flex:1;border:0;outline:0;padding:14px 0;font-size:14px;background:none}
+  .sr{padding:10px 14px;border:1px solid var(--border);border-top:0;font-size:13px;cursor:pointer;background:#fff}
+  .sr small{display:block;color:var(--sub)}
+  .sr:hover{background:#f3f6fd}
+
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .sc{border:1px solid var(--border);border-radius:14px;padding:13px 14px;background:#fff}
+  .sc .v{font:700 26px var(--mono)}
+  .sc .v small{font-size:13px;color:var(--sub);font-weight:400}
+  .sc .k{font-size:12px;color:#444;margin-top:2px}
+  .v.b{color:var(--blue)} .v.g{color:var(--green)} .v.o{color:var(--orange)} .v.r{color:var(--red)}
+
+  .card{border:1px solid var(--border);border-radius:14px;background:#fff;overflow:hidden}
+  .card.pad{padding:14px}
+  .card-h{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:14px}
+  .card-h a{font-size:12px;color:var(--blue);font-weight:500;cursor:pointer;text-decoration:none}
+  .legend{display:flex;flex-wrap:wrap;gap:4px 12px;margin:10px 0;font-size:11px;color:#444}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+  .dbar{display:flex;height:30px;border-radius:5px;overflow:hidden;gap:2px}
+  .dbar>div{min-width:34px;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:700}
+  .dbar.thin{height:14px}.dbar.thin span{display:none}.dbar.thin>div{min-width:3px}
+
+  /* tables */
+  .tw{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th{background:#f5f7fb;color:var(--sub);font-size:12px;font-weight:500;text-align:left;padding:10px;white-space:nowrap;border-bottom:1px solid var(--border)}
+  th[data-sort]{cursor:pointer}
+  td{padding:11px 10px;border-bottom:1px solid #eef0f3;white-space:nowrap}
+  tr:last-child td{border-bottom:0}
+  td:first-child,th:first-child{position:sticky;left:0;background:inherit;z-index:1}
+  td:first-child{background:#fff;font-weight:700}
+  th:first-child{background:#f5f7fb}
+  table.ov{min-width:440px}
+  tr.tot td{background:#eaf1ff;font-weight:700}
+  tr.go{cursor:pointer}
+  tr.go:hover td{background:#f7f9ff}
+  .num{display:inline-block;min-width:30px;text-align:center;border-radius:6px;padding:2px 7px;font-size:12px;font-weight:700}
+  .g0{background:#fee2e2;color:#dc2626}.g1{background:#ffedd5;color:#ea580c}.g2{background:#dcfce7;color:#16a34a}.g3{background:#dbeafe;color:#2563eb}
+  .gchip{display:inline-block;min-width:30px;text-align:center;border-radius:6px;padding:3px 8px;font-size:12px;font-weight:700}
+  .or{color:var(--orange)}
+  td small,.nm small{display:block;font-weight:400;font-size:11px;color:var(--sub)}
+  td.wrap{white-space:normal;min-width:130px}
+
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  .nav-card{border:1px solid var(--border);border-radius:14px;padding:14px;background:#fff;cursor:pointer}
+  .nav-card .ic{font-size:20px;margin-bottom:8px}
+  .nav-card b{display:block;font-size:14px}
+  .nav-card span{display:block;font-size:12px;color:var(--sub);margin:4px 0 6px}
+  .nav-card em{font-style:normal;font-size:12px;color:var(--blue)}
+
+  .li{display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:14px;padding:12px 14px;background:#fff;margin-bottom:10px;cursor:pointer}
+  .li .ic{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:20px;flex-shrink:0}
+  .ic.gr{background:#e6f6ec}.ic.rd{background:#fde8e8}
+  .li .tx{flex:1;min-width:0}
+  .li b{display:block;font-size:14px}
+  .li span{display:block;font-size:12px;color:#444;margin-top:2px;line-height:1.35}
+  .li .ar{color:var(--blue);font-size:20px}
+  .dl{display:flex;justify-content:center;align-items:center;gap:8px;margin:18px auto 6px;width:calc(100% - 28px);border:1px solid var(--border);border-radius:999px;padding:13px;background:#fff;color:#444;font-size:14px}
+
+  /* students */
+  .band{display:flex;align-items:center;justify-content:space-between;background:#eef3ff;padding:10px 14px;font:700 12px var(--mono);letter-spacing:.06em;color:var(--blue)}
+  td.stu{display:flex;align-items:center;gap:10px;white-space:nowrap}
+  .av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0}
+  .a0{background:#dcfce7;color:#16a34a}.a1{background:#dbeafe;color:#2563eb}.a2{background:#ffedd5;color:#ea580c}
+  td.stu small{font-weight:400}
+
+  /* question rows */
+  .qhead,.qrow{display:grid;grid-template-columns:22px 44px 1fr 46px;gap:8px;align-items:start;padding:10px 12px}
+  .qhead{background:#f5f7fb;font-size:12px;color:var(--sub);align-items:center;border-bottom:1px solid var(--border)}
+  .qhead [data-qsort]{cursor:pointer;white-space:nowrap}
+  .qhead,.qrow{grid-template-columns:22px 46px 1fr 40px;gap:6px;padding-left:10px;padding-right:10px}
+  .qrow{border-bottom:1px solid #eef0f3}
+  .qrow:last-child{border-bottom:0}
+  .qi{font-size:13px;line-height:18px;color:#111}
+  .qn{font-weight:700;color:#111;font-size:13px;line-height:18px}
+  .qt{font-size:13px;line-height:18px;word-break:break-word}
+  .rn{font-size:13px;line-height:18px;font-weight:700;word-break:break-word}
+  .rm{font-size:11px;color:var(--sub);margin-top:2px}
+  .qrow.rk,.qhead.rk{grid-template-columns:22px 1fr 40px}
+  .qrow.rk{cursor:pointer}
+  .qt .more,.qt .less{color:var(--blue);cursor:pointer;font-weight:600;white-space:nowrap}
+  .qbar{height:6px;border-radius:3px;background:#fde5d3;margin-top:8px;overflow:hidden}
+  .q-top .qbar{background:#dcfce7}.q-hard .qbar{background:#fee2e2}
+  .qbar i{display:block;height:100%;border-radius:3px}
+  .qp{font-weight:700;font-size:13px;line-height:18px;text-align:right}
+  .cap{font:11px var(--mono);color:var(--sub);line-height:1.5;margin:12px 0 10px}
+  .info{padding:10px 14px;font-size:13px;color:#444;border-bottom:1px solid var(--border)}
+
+  /* error types */
+  .eh{display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px}
+  .eh .lbl{margin:0}
+  .xls{background:var(--green);color:#fff;border:0;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px}
+  td.c0{color:var(--muted);font-weight:700}td.c1{color:var(--orange);font-weight:700}
+
+  .dr{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid #eef0f3}
+  .dr:last-child{border-bottom:0}
+  .dr b{font-size:13px}.dr small{display:block;font-size:11px;color:var(--sub);margin-top:4px}
+
+  .infobox{display:flex;align-items:center;gap:8px;background:#eaf1ff;border:1px solid #cfe0ff;border-radius:8px;padding:10px 12px;font-size:12px;color:#1e3a8a;margin-top:14px}
+  .infobox .ii{width:16px;height:16px;border-radius:4px;background:var(--blue);color:#fff;font:700 11px var(--mono);display:grid;place-items:center;flex-shrink:0}
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .tile{border-radius:10px;padding:10px 2px;text-align:center}
+  .tile b{display:block;font:700 17px var(--mono)}
+  .tile span{display:block;font-size:11px;font-weight:700;margin-top:2px}
+  .tile small{display:block;font-size:11px;color:#444}
+  .t0{background:#fdeceb}.t1{background:#fff0e4}.t2{background:#e8f7ee}.t3{background:#e8f0fe}
+  table.gt{min-width:340px}
+  .gt td,.gt th{text-align:center}.gt td:first-child,.gt th:first-child{text-align:left}
+  .gt td.wrap{font-size:12px}
+  .gp{display:block;font-weight:700;font-size:13px}
+  .gt td small{display:block;font-size:11px;color:var(--sub);font-weight:400}
+  .arr{display:block;color:var(--blue);font-weight:400}
+  .rkctl{padding:10px 14px;display:flex;flex-direction:column;gap:10px}
+  .rkrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .lb2{font:11px var(--mono);letter-spacing:.1em;color:var(--muted);width:52px}
+  .sch{border:1px solid var(--border);background:#eef1f6;border-radius:999px;padding:5px 11px;font-size:12px;color:#444}
+  .sch.on{background:#fff;border-color:var(--blue);color:var(--blue);font-weight:600}
+  select.rows{border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px;background:#fff}
+  .xls.big{padding:11px 14px;font-size:12px;border-radius:8px}
+  table.rkt{min-width:600px;font-size:12px}
+  .rkt th{text-align:right;font-size:11px}.rkt th:nth-child(-n+2){text-align:left}
+  .rkt td{text-align:right;padding:11px 8px}.rkt td:nth-child(-n+2){text-align:left}
+  .rkt td:first-child{font-weight:400;color:var(--sub);min-width:34px;width:34px}
+  .rkt th:nth-child(2),.rkt td:nth-child(2){position:sticky;left:34px;background:#fff;z-index:1;min-width:170px;border-right:1px solid var(--border)}
+  .rkt th:nth-child(2){background:#f5f7fb}
+  .rkt td.rname{font-weight:700;font-size:12px}
+  .rdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
+  .ra{color:var(--green);font-weight:700}.rd{color:var(--red);font-weight:700}.re{color:var(--red);font-weight:700}.rm2{color:var(--sub)}
+  /* student page */
+  .sp{display:grid;grid-template-columns:92px 30px 1fr 42px;gap:8px;align-items:center;padding:14px;border-bottom:1px solid #eef0f3}
+  .spn{font-weight:700;font-size:14px;line-height:1.25;word-break:break-word}
+  .spbar{height:9px;border-radius:5px;background:#e5e7eb;overflow:hidden}.spbar i{display:block;height:100%;border-radius:5px}
+  .spm{font:11px var(--mono);color:var(--sub);text-align:right}
+  .tot2{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f5f7fb;font-size:13px;color:#444}
+  .jl{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 0 4px;font-size:12px}
+  .jl span{display:flex;align-items:center;gap:5px}
+  tr.go td{cursor:pointer}
+  .cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+  .sc3{border:1px solid var(--border);border-radius:14px;padding:12px;background:#fff}
+  .sc3 .v{font:700 20px var(--mono)}
+  .sc3 .k{font-size:11px;font-style:italic;color:#444;margin-top:3px;line-height:1.3}
+  .v.n{color:#1e3a5f}
+  table.pt{table-layout:auto}
+  .pt th:not(:first-child),.pt td:not(:first-child){text-align:right}
+  .pt td:first-child{font-weight:500}
+  .pt tr.tot td:first-child{font-weight:700}
+  .pt td.pc{color:var(--orange);font-weight:700}
+  .pt tr.moreRow td{text-align:center!important;color:var(--sub);font:11px var(--mono);background:#fff;cursor:pointer;padding:12px}
+  /* bottom navigation */
+  #nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#fff;border-top:1px solid var(--border);display:flex;z-index:40}
+  #nav button{flex:1;background:none;border:0;padding:9px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:13px;font-weight:600}
+  #nav button+button{border-left:2px solid #f2b1b1;margin:6px 0;padding:3px 0}
+  #nav svg{width:18px;height:18px;fill:none;stroke:#111;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  #nav .red{color:#9f1239}#nav .red svg{stroke:#b91c1c}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div id="nav"></div>
+
+<script>
+/* =====================================================================
+   EDIT HERE  –  labels, grades, errors and sample data live in this block
+   ===================================================================== */
+const CONFIG = {
+  program: 'Vinoba',
+  tagline: 'PROGRAM ANALYTICS',
+  districtName: 'ThaneZP District',
+  role: 'District Admin',
+  academicYears: ['AY 2026-27', 'AY 2025-26'],
+  cycle: 'Oct 2026',
+  journeyCycles: ['Apr 2026', 'Jul 2026', 'Oct 2026'],   // student journey chart (last one = current cycle)
+  examTypes: ['NMMS', 'Scholarship'],
+  examFilters: ['ThaneZP_SE_4th_Oct26', 'ThaneZP_Scholarship_7th_Oct26'],
+  classes: ['Class 4'],
+  // Student-table subjects (order = column order)
+  subjects: ['English', 'गणित', 'बुद्धिमत्ता चाचणी', 'मराठी'],
+  // Subjects shown in the question pages
+  questionSubjects: ['गणित', 'मराठी', 'English', 'बुद्धिमत्ता चाचणी'],
+  // Grades. Mapping requested:  L1 → D,  L2 → C,  L3 → B,  Nipun (L4) → A
+  // Order here = order in bars/tables (D first, A last).
+  levels: [
+    { key: 'D', name: '<40%',   color: '#dc2626' },   // was L1  (score below 40%)
+    { key: 'C', name: '40–59%', color: '#ea580c' },   // was L2
+    { key: 'B', name: '60–74%', color: '#16a34a' },   // was L3
+    { key: 'A', name: '≥75%',   color: '#2563eb' }    // was L4 / Nipun
+  ],
+  // Data error types shown for all SE & NMMSE exams
+  errorTypes: [
+    'Invalid UDISE',
+    'Paper Not Found',
+    'Roll Number Not Found',
+    'Roll No. in Paper 1 Found, Paper 2 Not Found',
+    'Roll No. in Paper 2 Found, Paper 1 Not Found',
+    'Duplicate Roll Number',
+    'Multiple Sheets',
+    'Invalid Sheets (Not Read)'
+  ],
+  bottomNav: ['For You', 'Teacher Story', 'Diary']
+};
+
+/* Block-level sample data (replace with real numbers).
+   dist = students at [D, C, B, A]; enrolled ≥ appeared (= sum of dist).
+   Clusters, schools and students below block level are generated from these. */
+const SPECS = {
+  NMMS: [
+    { code:'272115', name:'AMBERNATH', schools:170, part:8,  dist:[17,8,0,0],    enrolled:47,  errors:2,  clusters:['ALYANI','TULAI','MANGRUL'] },
+    { code:'272101', name:'BHIWANDI',  schools:450, part:28, dist:[82,13,1,0],   enrolled:128, errors:8,  clusters:['KONGAON','CHIMBIPADA','PADGHA','VAJRESHWARI','SAVAD'] },
+    { code:'272105', name:'KALYAN',    schools:212, part:12, dist:[32,7,0,0],    enrolled:49,  errors:3,  clusters:['SAPGAON','KAMBA','NIMBAVLI','TITWALA'] },
+    { code:'272109', name:'MURBAD',    schools:330, part:15, dist:[115,20,1,0],  enrolled:184, errors:10, clusters:['MHASA','DHASAI','SARALGAON','KISHOR'] },
+    { code:'272112', name:'SHAHAPUR',  schools:170, part:7,  dist:[53,12,0,0],   enrolled:105, errors:5,  clusters:['KASARA','DAHIVALI','DOLKHAMB'] }
+  ],
+  Scholarship: [
+    { code:'272115', name:'AMBERNATH', schools:170, part:6,  dist:[10,12,6,2],   enrolled:44,  errors:3,  clusters:['ALYANI','TULAI','MANGRUL'] },
+    { code:'272101', name:'BHIWANDI',  schools:450, part:20, dist:[38,33,15,5],  enrolled:120, errors:7,  clusters:['KONGAON','CHIMBIPADA','PADGHA','VAJRESHWARI','SAVAD'] },
+    { code:'272105', name:'KALYAN',    schools:212, part:9,  dist:[14,14,8,2],   enrolled:52,  errors:2,  clusters:['SAPGAON','KAMBA','NIMBAVLI','TITWALA'] },
+    { code:'272109', name:'MURBAD',    schools:330, part:12, dist:[55,45,22,6],  enrolled:170, errors:9,  clusters:['MHASA','DHASAI','SARALGAON','KISHOR'] },
+    { code:'272112', name:'SHAHAPUR',  schools:170, part:6,  dist:[28,24,9,3],   enrolled:90,  errors:4,  clusters:['KASARA','DAHIVALI','DOLKHAMB'] }
+  ]
+};
+
+const SCHOOL_NAMES = ['SHELAVALI HIGHER','KORAVALE','RANJANOLI','UMBERMALI','AGASAN','ANJUR','BAPGAON','BHAL','BHARODI','CHERPOLI','DAHIVALI','DEOLI','DHASAI','DIGHA','GOVELI','KALHER','KASHELI','KHARBAV','KOLIVALI','MANKOLI','NANDIVALI','NARPOLI','PADGHA','PIMPALGAON','PISE','SAVAD','SARALGAON','TEMGHAR','VADAVLI','VALGAON','WARAP','ABHOLI','ADIVALI','AKLOLI','ALIVALI','ASNOLI','ATGAON','BORIVALI','CHARI','CHINCHAVALI','DONIVALI','GANESHPURI','GHOTGAON','GUNDAVALI','HEDAVLI','JAMBHUL','KAMBA','KANERI','KARAVALE','KHADAVLI','KHARIVALI','KUDUS','LOHAGAON','MALEGAON','MHASA','MOHONE','NIMBAVLI','PALASPE','PARGAON','SAGAON','SHIROLI','SONAVLI','TALAVALI','TOKAVADE','UMBARPADA','VAJRESHWARI','VASIND','VEHALE','YEWA','ZIDKE'];
+
+/* Question bank: q = question no., t = text, p = base % correct */
+const dv = n => String(n).replace(/\d/g, d => '०१२३४५६७८९'[d]);
+const QBANK = {
+  'गणित': [
+    {q:26,t:'आंतरराष्ट्रीय संख्याचिन्हे एकूण किती आहेत?',p:75},
+    {q:27,t:'५६,८९४ या संख्येतील शतक स्थानचा अंक आंतरराष्ट्रीय अंकात लिहा.',p:75},
+    {q:28,t:'साडे चारशे ही संख्या आंतरराष्ट्रीय संख्याचिन्हात .......... अशी लिहितात.',p:75},
+    {q:67,t:'१३/५ या अपूर्णांकाचे पूर्णांकयुक्त अपूर्णांकामध्ये रूपांतर करा.',p:75},
+    {q:30,t:'सव्वा पस्तीस हजार म्हणजे किती?',p:50},
+    {q:36,t:'१ ते १०० मध्ये ५ हा अंक किती वेळा येतो?',p:50},
+    {q:37,t:'एका शेतकऱ्याकडे '+dv(350)+' आंब्याची झाडे आहेत. त्यापैकी '+dv(125)+' झाडे त्याने विकली आणि '+dv(40)+' झाडे नवीन लावली. आता त्याच्याकडे एकूण किती आंब्याची झाडे आहेत? उत्तर लिहा.',p:23},
+    {q:47,t:'एका शाळेत '+dv(240)+' विद्यार्थी आहेत. त्यापैकी '+dv(3)+'/'+dv(8)+' विद्यार्थी मुली आहेत. तर शाळेत मुलांची संख्या किती आहे ते काढा आणि मुलींपेक्षा मुले किती जास्त आहेत ते लिहा.',p:24},
+    ...[[31,'+',[425,318],62],[32,'−',[900,457],55],[33,'×',[24,13],47],[34,'+',[1234,2765],58],[35,'−',[5000,2468],41],[38,'×',[35,12],44],[39,'+',[678,245],66],[40,'−',[1000,375],51],[41,'×',[15,15],38],[42,'+',[999,111],60],[43,'×',[18,6],57],[44,'+',[3456,1789],49]]
+      .map(([q,op,[a,b],p]) => ({q, t: dv(a)+' '+op+' '+dv(b)+' किती होतात?', p}))
+  ],
+  'मराठी': [
+    "'सूर्य' या शब्दाचा समानार्थी शब्द कोणता?",
+    "'विद्यार्थी' या शब्दाचे अनेकवचन लिहा.",
+    "'उंच' या शब्दाचा विरुद्धार्थी शब्द कोणता?",
+    "खालील वाक्यातील नाम ओळखा: 'राम शाळेत गेला.'",
+    "'आम्ही रोज शाळेत जातो.' या वाक्यातील क्रियापद कोणते?",
+    "'पाणी' या शब्दाचे लिंग ओळखा.",
+    "'गाय' हा शब्द कोणत्या वचनात आहे?",
+    "खालीलपैकी कोणता शब्द विशेषण आहे? सुंदर, फूल, धावणे, तो",
+    "'आकाश' या शब्दाला समानार्थी नसलेला शब्द ओळखा.",
+    "योग्य विरामचिन्ह निवडा: तू कुठे जात आहेस",
+    "खालील परिच्छेद वाचा आणि त्याखालील प्रश्नाचे उत्तर द्या: गावाच्या वेशीवर एक जुने वडाचे झाड होते. उन्हाळ्यात सर्व गावकरी त्याच्या सावलीत विश्रांती घेत असत. या परिच्छेदानुसार गावकरी उन्हाळ्यात कोठे विश्रांती घेत?",
+    "'पक्षी' या शब्दाचे अनेकवचनी रूप कोणते?",
+    "'फूल' या शब्दाचे अनेकवचन लिहा.",
+    "'सुंदर' या शब्दाचा विरुद्धार्थी शब्द कोणता?",
+    "खालीलपैकी कोणता शब्द सर्वनाम आहे? आम्ही, घर, पुस्तक, चालणे",
+    "'मी पुस्तक वाचतो.' या वाक्याचा काळ ओळखा.",
+    "'पाऊस' या शब्दाचा समानार्थी शब्द कोणता?",
+    "योग्य शब्द भरा: आई स्वयंपाक ........ आहे.",
+    "'हत्ती' या शब्दाचे लिंग ओळखा.",
+    "'नाचता येईना अंगण वाकडे' या म्हणीचा अर्थ सांगा."
+  ],
+  'English': [
+    'Choose the correct plural of "child".',
+    'Fill in the blank: She ___ to school every day.',
+    'What is the opposite of "brave"?',
+    'Select the noun: run, happy, teacher, quickly.',
+    'Which word is a verb in the sentence "Birds fly in the sky"?',
+    'Fill in the blank with the correct article: ___ elephant is a big animal.',
+    'Choose the past tense of "go".',
+    'Read the passage and answer: Ravi has a red kite. He flies it every Sunday with his friends in the open ground near his house. Where does Ravi fly his kite?',
+    'What is the synonym of "happy"?',
+    'Identify the adjective: The tall boy ran fast.',
+    'Choose the correct preposition: The book is ___ the table.',
+    'Choose the correct spelling.',
+    'Which of these is a proper noun?',
+    'Choose the correct form: He ___ a book yesterday.',
+    'Fill in the blank: They ___ playing in the garden.',
+    'What is the plural of "mouse"?',
+    'Choose the word that rhymes with "cat".',
+    'Identify the pronoun in the sentence: She reads a book every night before going to bed.',
+    'What is the opposite of "early"?',
+    'Choose the correct sentence: (a) I am go to school. (b) I go to school.'
+  ],
+  'बुद्धिमत्ता चाचणी': [
+    dv(2)+', '+dv(4)+', '+dv(8)+', '+dv(16)+', __ या मालिकेतील पुढील संख्या कोणती?',
+    'विसंगत घटक ओळखा: आंबा, केळी, गाजर, संत्रे.',
+    'जर A = '+dv(1)+' आणि B = '+dv(2)+' तर C = किती?',
+    'आठवड्यातील मंगळवारनंतर येणारा वार कोणता?',
+    'खालील मालिकेतील पुढील अक्षर कोणते? अ, इ, उ, __',
+    dv(5)+', '+dv(10)+', '+dv(15)+', '+dv(20)+', __ ही मालिका पूर्ण करा.',
+    'घड्याळात तास काटा '+dv(3)+' वर आणि मिनिट काटा '+dv(12)+' वर असल्यास किती वाजले?',
+    'एका रांगेत राम पुढून पाचवा आणि मागून सहावा आहे, तर रांगेत एकूण किती मुले आहेत?',
+    'सम संख्या ओळखा: '+dv(7)+', '+dv(12)+', '+dv(15)+', '+dv(19),
+    dv(100)+' मधून '+dv(25)+' वजा केल्यावर किती राहतात?',
+    'त्रिकोणाला एकूण किती कोन असतात?',
+    "'पुस्तक : वाचणे' तसे 'गाणे : ?'",
+    dv(1)+', '+dv(3)+', '+dv(5)+', '+dv(7)+', __ पुढील संख्या कोणती?',
+    'मांजर : म्याऊ तसे कुत्रा : ?',
+    'विसंगत शब्द ओळखा: लाल, निळा, हिरवा, टेबल.',
+    'एका आठवड्यात किती दिवस असतात?',
+    'जर आज सोमवार असेल तर परवा कोणता वार असेल?',
+    'दोन संख्यांची बेरीज '+dv(10)+' आणि फरक '+dv(2)+' असल्यास मोठी संख्या कोणती?',
+    'सर्वात मोठी संख्या ओळखा: '+dv(456)+', '+dv(546)+', '+dv(645)+', '+dv(465),
+    'एका तासात '+dv(60)+' मिनिटे असतात, तर '+dv(2)+' तासांत किती मिनिटे?'
+  ]
+};
+/* =====================  END OF EDIT BLOCK  ===================== */
+
+/* ---------- helpers ---------- */
+const L = CONFIG.levels, SUBJ = CONFIG.subjects, ET = CONFIG.errorTypes;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => Number(n).toLocaleString('en-IN');
+const pc = (x, y, d = 0) => y ? (x / y * 100).toFixed(d) : (0).toFixed(d);
+const fmtp = x => (Math.round(x * 10) / 10) + '%';
+const pad2 = n => String(n).padStart(2, '0');
+const sum = a => a.reduce((x, y) => x + y, 0);
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function split(total, n, rng, min = 0){
+  const out = Array(n).fill(min); let rest = total - min * n;
+  if (rest <= 0 || !n) return out;
+  const w = Array.from({length:n}, () => rng() + .25), sw = sum(w), raw = w.map(x => x / sw * rest);
+  raw.forEach((r, i) => out[i] += Math.floor(r));
+  const left = total - sum(out);
+  raw.map((r, i) => [r - Math.floor(r), i]).sort((a, b) => b[0] - a[0]).slice(0, left).forEach(([, i]) => out[i]++);
+  return out;
+}
+function shuffle(a, rng){for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+/* ---------- build the hierarchy: district → block → cluster → school → students ---------- */
+function buildDB(specs, seed){
+  const rng = mulberry32(seed), byId = {}; let nameIdx = seed % 7;
+  const district = {id:'thane', type:'district', name:CONFIG.districtName, title:CONFIG.districtName, parent:null, children:[]};
+  byId.thane = district;
+  specs.forEach(b => {
+    const appeared = sum(b.dist), nC = b.clusters.length;
+    const block = {id:b.code, type:'block', name:b.name, title:b.code+'-'+b.name, parent:district, children:[]};
+    byId[block.id] = block; district.children.push(block);
+    const partSplit = split(b.part, nC, rng, 1), extra = split(b.schools - b.part, nC, rng);
+    const sizes = split(appeared, b.part, rng, 1), enrExtra = split(b.enrolled - appeared, b.part, rng);
+    const errBy = Array(b.part).fill(0), errType = Array.from({length:b.part}, () => Array(ET.length).fill(0));
+    for (let e = 0; e < b.errors; e++){
+      let s; do { s = Math.floor(rng() * b.part); } while (errBy[s] >= sizes[s]);
+      errBy[s]++; errType[s][Math.floor(rng() * ET.length)]++;
+    }
+    const pool = [];
+    b.dist.forEach((n, g) => { for (let i = 0; i < n; i++) pool.push(g); });
+    shuffle(pool, rng);
+    let si = 0;
+    b.clusters.forEach((cn, ci) => {
+      const cid = b.code + pad2(ci + 1);
+      const cl = {id:cid, type:'cluster', name:cn, title:cid+'-'+cn, parent:block, children:[], totalSchools:partSplit[ci] + extra[ci]};
+      byId[cid] = cl; block.children.push(cl);
+      for (let k = 0; k < partSplit[ci]; k++, si++){
+        const sid = cid + (201 + k);
+        const nm = (b.name === 'BHIWANDI' && cn === 'CHIMBIPADA' && k === 0) ? 'DHAMANE' : SCHOOL_NAMES[nameIdx++ % SCHOOL_NAMES.length];
+        const students = [];
+        for (let j = 0; j < sizes[si]; j++){
+          const overall = pool.pop();
+          const grades = SUBJ.map(() => {
+            let g = overall; const r = rng();
+            if (r < .3) g = Math.max(0, Math.min(3, overall + (rng() < .5 ? -1 : 1)));
+            return rng() < .05 ? null : g;
+          });
+          const pr = rng(), papers = pr < .8 ? 3 : pr < .9 ? 1 : 2;   // bit1 = Paper 1, bit2 = Paper 2
+          students.push({key:sid+'_'+(4001+j), name:'Student '+(4001+j), roll:4001+j, overall, grades, papers});
+        }
+        const sc = {id:sid, type:'school', name:'ZPS.'+nm, title:sid+'-ZPS.'+nm, parent:cl, students,
+          enrolled:sizes[si] + enrExtra[si], errors:errBy[si], errTypes:errType[si]};
+        byId[sid] = sc; cl.children.push(sc);
+        students.forEach(x => { byId[x.key] = {id:x.key, type:'student', name:x.name, title:x.name, parent:sc, stu:x}; });
+      }
+    });
+  });
+  return {district, byId};
+}
+const DBS = {};
+const state = {rk:{}, cyc:null, exam:CONFIG.examTypes[0], ay:CONFIG.academicYears[0], sort:{key:'name', dir:1}, qs:0, qsort:null, ef:0, exp:{}};
+const db = () => DBS[state.exam] || (DBS[state.exam] = buildDB(SPECS[state.exam], state.exam === 'NMMS' ? 11 : 29));
+const find = id => db().byId[id];
+const ancestors = n => { const a = []; for (let p = n.parent; p; p = p.parent) a.unshift(p); return a; };
+function descend(n, type){ const out = []; (function w(x){ if (x.type === type) out.push(x); (x.children||[]).forEach(w); })(n); return out; }
+function fallbackId(id){ if (!find(id) && id.includes('_')) id = id.split('_')[0]; while (id !== 'thane' && !find(id)) id = id.length >= 11 ? id.slice(0,8) : id.length >= 8 ? id.slice(0,6) : 'thane'; return id; }
+
+/* ---------- stats (aggregated bottom-up) ---------- */
+function st(n){
+  if (n._s) return n._s;
+  let s;
+  if (n.type === 'school'){
+    const dist = [0,0,0,0], subj = SUBJ.map(() => [0,0,0,0]);
+    const pd = m => { const d = [0,0,0,0]; n.students.forEach(x => { if (x.papers & m) d[x.overall]++; }); return d; };
+    n.students.forEach(x => { dist[x.overall]++; x.grades.forEach((g, i) => { if (g != null) subj[i][g]++; }); });
+    s = {part:1, total:1, appeared:n.students.length, enrolled:n.enrolled, dist, errors:n.errors, errTypes:n.errTypes.slice(), subj,
+      p1:n.students.filter(x => x.papers & 1).length, p2:n.students.filter(x => x.papers & 2).length, pb:n.students.filter(x => x.papers === 3).length, pd1:pd(1), pd2:pd(2)};
+  } else {
+    s = {part:0, total:0, appeared:0, enrolled:0, p1:0, p2:0, pb:0, pd1:[0,0,0,0], pd2:[0,0,0,0], dist:[0,0,0,0], errors:0, errTypes:Array(ET.length).fill(0), subj:SUBJ.map(() => [0,0,0,0])};
+    n.children.forEach(c => {
+      const t = st(c);
+      s.part += t.part; s.total += t.total; s.p1 += t.p1; s.p2 += t.p2; s.pb += t.pb; s.appeared += t.appeared; s.enrolled += t.enrolled; s.errors += t.errors;
+      t.dist.forEach((v, i) => s.dist[i] += v); t.pd1.forEach((v, i) => s.pd1[i] += v); t.pd2.forEach((v, i) => s.pd2[i] += v); t.errTypes.forEach((v, i) => s.errTypes[i] += v);
+      t.subj.forEach((r, i) => r.forEach((v, j) => s.subj[i][j] += v));
+    });
+    if (n.type === 'cluster') s.total = n.totalSchools;
+  }
+  return n._s = s;
+}
+const score = n => { const s = st(n); return s.appeared ? (s.dist[1] + 2*s.dist[2] + 3*s.dist[3]) / (3*s.appeared) : 0; };
+const rv = (x, k) => { const t = st(x); return {a:t.appeared ? t.dist[3] / t.appeared : 0, d:t.appeared ? t.dist[0] / t.appeared : 0, part:t.enrolled ? t.appeared / t.enrolled : 0, err:t.appeared ? t.errors / t.appeared : 0}[k]; };
+function ranked(n, type, top, key){
+  key = key || (top ? 'a' : 'd');
+  const dir = {a:-1, d:-1, part:top ? -1 : 1, err:top ? 1 : -1}[key];
+  const tie = top ? ['d', 1] : ['a', 1];
+  const arr = descend(n, type).filter(x => st(x).appeared > 0);
+  arr.sort((x, y) => (rv(x, key) - rv(y, key)) * dir || (key === 'a' || key === 'd' ? (rv(x, tie[0]) - rv(y, tie[0])) * tie[1] : 0) || st(y).appeared - st(x).appeared || x.name.localeCompare(y.name));
+  return arr;
+}
+
+/* ---------- questions ---------- */
+function bankFor(subj){
+  const raw = QBANK[subj], base = {'गणित':0,'मराठी':1,'English':51,'बुद्धिमत्ता चाचणी':81}[subj];
+  const r = mulberry32(hash(subj));
+  return raw.map((x, i) => typeof x === 'string' ? {q: base + i, t: x, p: 25 + Math.round(r() * 60)} : x);
+}
+function qPct(base, n, key){
+  const s = st(n), rr = mulberry32(hash(n.id + key + state.exam));
+  let p = Math.max(2, Math.min(98, base + (rr() - .5) * (n.type === 'school' ? 30 : 14)));
+  if (s.appeared > 0 && s.appeared <= 20) p = Math.round(p / 100 * s.appeared) / s.appeared * 100;
+  return Math.round(p);
+}
+function qList(n, subj, kind){
+  const l = bankFor(subj).map(x => ({...x, pct: qPct(x.p, n, x.q)}));
+  l.sort((a, b) => (kind === 'top' ? b.pct - a.pct : a.pct - b.pct) || a.q - b.q);
+  return l;
+}
+const qColor = () => 'var(--orange)';   // one monochrome orange for every % value / bar
+
+/* ---------- small renderers ---------- */
+const SVG = {
+  home:'<svg class="ico" viewBox="0 0 24 24"><path d="M12 3 2 12h3v8h5v-5h4v5h5v-8h3z"/></svg>',
+  chat:'<svg class="ico" viewBox="0 0 24 24"><path d="M3 4h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H8l-4 3v-3H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M18 8v5a3 3 0 0 1-3 3h-1l3.5 3.5V16H19a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2z"/></svg>',
+  bell:'<svg class="ico" viewBox="0 0 24 24"><path d="M12 22a2.2 2.2 0 0 0 2.2-2.2H9.8A2.2 2.2 0 0 0 12 22zm7-6v-5a7 7 0 0 0-5-6.7V3a2 2 0 0 0-4 0v1.3A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></svg>',
+  out:'<svg class="ico" viewBox="0 0 24 24"><path d="M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h5v-2H5V5h5zm7 4-1.4 1.4 2.6 2.6H9v2h9.2l-2.6 2.6L17 17l5-5z"/></svg>'
+};
+function renderNav(){
+  const [a, b, c] = CONFIG.bottomNav;
+  document.getElementById('nav').innerHTML =
+    `<button><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>${esc(a)}</button>
+     <button><svg viewBox="0 0 24 24"><path d="M3 11 12 3l9 8M5 10v10h14V10"/></svg>${esc(b)}</button>
+     <button class="red"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>${esc(c)}</button>`;
+}
+const topbar = () => `<div class="topbar"><button class="ibtn" data-go="#/n/thane">${SVG.home}</button><div class="r"><button class="ibtn">?</button><button class="ibtn">${SVG.chat}</button><button class="ibtn">${SVG.bell}</button><button class="ibtn">${SVG.out}</button></div></div>
+  <nav class="tabs"><button class="tab on">Exams</button><button class="tab">My Post</button><button class="tab">Bookmark</button></nav>`;
+const aySel = () => `<select class="ay" data-ay>${CONFIG.academicYears.map(a => `<option ${a === state.ay ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select>`;
+function pageHeader(n, o = {}){
+  return `<div class="hdr"><button class="back" data-back>←</button><div class="hdr-t"><div class="ttl">${esc(o.title || n.title)}${o.badge ? `<span class="badge">${o.badge}</span>` : ''}</div>${o.sub ? `<div class="hsub">${esc(o.sub)}</div>` : ''}</div>${aySel()}</div>`;
+}
+function crumbs(n, page){
+  if (page) return `<div class="crumbs"><a data-go="#/n/${n.id}">${esc(n.type === 'district' ? n.name : n.title)}</a><span class="sep">›</span><b>${esc(page)}</b></div>`;
+  return `<div class="crumbs">${ancestors(n).map(a => `<a data-go="#/n/${a.id}">${esc(a.name)}</a><span class="sep">›</span>`).join(' ')}</div>`;
+}
+function examBlocks(withFilter){
+  return `<div class="lbl">Exam Type</div><div class="chips">${CONFIG.examTypes.map(e => `<button class="chip ${e === state.exam ? 'on' : ''}" data-exam="${esc(e)}">${esc(e)}</button>`).join('')}</div>
+    <div class="lbl">Cycle</div><div class="chips"><button class="chip cyc">${esc(CONFIG.cycle)}</button></div>
+    ${withFilter ? `<div class="lbl">Exam Filter</div><div class="scroll-x">${CONFIG.examFilters.map((f, i) => `<button class="chip flt ${i === state.ef ? 'on' : ''}" data-ef="${i}">${esc(f)}</button>`).join('')}</div>` : ''}`;
+}
+const gchip = g => `<span class="gchip g${g}">${L[g].key}</span>`;
+function distBar(d, thin){
+  const t = sum(d) || 1;
+  return `<div class="dbar ${thin ? 'thin' : ''}">${d.map((v, i) => `<div style="flex:${v / t * 100} 1 0;background:${L[i].color}"><span>${fmtp(v / t * 100)}</span></div>`).join('')}</div>`;
+}
+const legend = () => `<div class="legend">${L.map(l => `<span><i style="background:${l.color}"></i>${l.key}: ${esc(l.name)}</span>`).join('')}</div>`;
+function distCard(s, title, link){
+  return `<div class="card pad"><div class="card-h"><span>${esc(title)}</span>${link ? `<a data-go="${link}">Details ↗</a>` : ''}</div>${legend()}${distBar(s.dist)}</div>`;
+}
+function statCards(s){
+  return `<div class="cards">
+    <div class="sc"><div class="v b">${s.part}<small> /${fmt(s.total)}</small></div><div class="k">Schools participating</div></div>
+    <div class="sc"><div class="v g">${fmt(s.appeared)}</div><div class="k">Students appeared</div></div></div>
+    <div class="cards3">
+    <div class="sc3"><div class="v o">${fmt(s.p1)}</div><div class="k">Students Participation in Paper 1</div></div>
+    <div class="sc3"><div class="v o">${fmt(s.p2)}</div><div class="k">Students Participation in Paper 2</div></div>
+    <div class="sc3"><div class="v n">${fmt(s.pb)}</div><div class="k">Students Participation in Paper 1 &amp; 2 Both</div></div></div>`;
+}
+const TYPE_LABEL = {district:'District', block:'Block', cluster:'Cluster', school:'School'};
+const CHILD_LABEL = {district:'Block', block:'Cluster', cluster:'School'};
+
+/* ---------- overview table (blocks / clusters / schools) ---------- */
+function colsFor(n){
+  const first = {k:'name', l:CHILD_LABEL[n.type]};
+  return n.type === 'cluster'
+    ? [first, {k:'d', l:'# '+L[0].key}, {k:'a', l:'# '+L[3].key}, {k:'app', l:'Appeared'}, {k:'stp', l:'% Students'}]
+    : [first, {k:'d', l:'# '+L[0].key}, {k:'a', l:'# '+L[3].key}, {k:'sp', l:'% Schools'}, {k:'stp', l:'% Students'}];
+}
+function colVal(k, x){
+  const s = st(x);
+  return {name:x.name, d:s.dist[0], a:s.dist[3], app:s.appeared, sp:s.total ? s.part / s.total : 0, stp:s.enrolled ? s.appeared / s.enrolled : 0}[k];
+}
+function overviewTable(n){
+  const cols = colsFor(n), s = st(n), so = state.sort;
+  const kids = n.children.slice().sort((a, b) => {
+    const x = colVal(so.key, a), y = colVal(so.key, b);
+    return (typeof x === 'string' ? x.localeCompare(y) : x - y) * so.dir;
+  });
+  const cell = (k, x) => {
+    const v = colVal(k, x);
+    if (k === 'd') return `<span class="num g0">${v}</span>`;
+    if (k === 'a') return `<span class="num g3">${v}</span>`;
+    if (k === 'sp' || k === 'stp') return `<b class="or">${Math.round(v * 100)}%</b>`;
+    return v;
+  };
+  const th = c => `<th data-sort="${c.k}">${esc(c.l)} <span style="opacity:.6">${so.key === c.k ? (so.dir > 0 ? '↑' : '↓') : '↕'}</span></th>`;
+  const nameCell = x => n.type === 'cluster' ? `<td class="wrap">${esc(x.name)}<small>${x.id}</small></td>` : `<td>${esc(x.name)}</td>`;
+  const totalName = {district:'📍 District Total', block:'📍 Block Total', cluster:'📍 Cluster Total'}[n.type];
+  const tot = `<tr class="tot"><td style="background:#eaf1ff">${totalName}</td>${cols.slice(1).map(c => `<td>${cell(c.k, n)}</td>`).join('')}</tr>`;
+  const label = {district:'Block-wise Overview', block:'Cluster-wise Overview', cluster:'School-wise Overview'}[n.type];
+  return `<div class="lbl">${label}</div><div class="card"><div class="card-h" style="padding:13px 14px;border-bottom:1px solid var(--border)">All ${CHILD_LABEL[n.type]}s</div>
+    <div class="tw"><table class="ov"><thead><tr>${cols.map(th).join('')}</tr></thead><tbody>${tot}
+    ${kids.map(x => `<tr class="go" data-go="#/n/${x.id}">${nameCell(x)}${cols.slice(1).map(c => `<td>${cell(c.k, x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
+}
+
+/* ---------- shared blocks ---------- */
+function twoCards(n){
+  return `<div class="two"><div class="nav-card" data-go="#/acad/${n.id}"><div class="ic">📊</div><b>Academic Performance</b><span>Class-wise · Subject-wise · ${L[0].key}–${L[3].key}</span><em>View details →</em></div>
+    <div class="nav-card" data-go="#/part/${n.id}"><div class="ic">📋</div><b>Participation &amp; Data</b><span>${n.type === 'school' ? 'Student attendance' : 'School &amp; student rates'} · Errors</span><em>View details →</em></div></div>`;
+}
+function perfItem(n, type, top, title, icon, cls){
+  const r = ranked(n, type, top); if (!r.length) return '';
+  const txt = r.slice(0, 2).map(x => { const s = st(x); return `${esc(x.name)} · ${pc(s.dist[top ? 3 : 0], s.appeared)}% ${L[top ? 3 : 0].key}`; }).join(' | ');
+  return `<div class="li" data-go="#/rank${top ? 'T' : 'B'}${type === 'school' ? 'S' : 'C'}/${n.id}"><div class="ic ${cls}">${icon}</div><div class="tx"><b>${title}</b><span>${txt}</span></div><div class="ar">→</div></div>`;
+}
+function perfList(n){
+  if (n.type === 'school') return '';
+  return `<div class="lbl">School &amp; Cluster Performance</div>
+    ${perfItem(n, 'school', true, 'Top Performing Schools', '🏆', 'gr')}${perfItem(n, 'school', false, 'Bottom Performing Schools', '⚠️', 'rd')}
+    ${n.type !== 'cluster' ? perfItem(n, 'cluster', true, 'Top Performing Clusters', '🏆', 'gr') + perfItem(n, 'cluster', false, 'Bottom Performing Clusters', '⚠️', 'rd') : ''}`;
+}
+function qaList(n){
+  const sub = CONFIG.questionSubjects[0];
+  const t = kind => qList(n, sub, kind).slice(0, 2).map(x => `Q${x.q} · ${x.pct}%`).join(' | ') + '…';
+  return `<div class="lbl">Question Analysis</div>
+    <div class="li" data-go="#/qtop/${n.id}"><div class="ic gr">✅</div><div class="tx"><b>Top Correctly Answered Questions</b><span>${t('top')}</span></div><div class="ar">→</div></div>
+    <div class="li" data-go="#/qhard/${n.id}"><div class="ic rd">❌</div><div class="tx"><b>Most Difficult Questions</b><span>${t('hard')}</span></div><div class="ar">→</div></div>`;
+}
+const searchBox = n => `<div class="lbl">School Search</div><div class="search"><span>🔍</span><input id="sq" data-scope="${n.id}" placeholder="Search school name or UDISE code..." autocomplete="off"></div><div id="sres"></div>`;
+
+/* ---------- views ---------- */
+function viewOverview(n){
+  const s = st(n); let h = '';
+  if (n.type === 'district'){
+    h += `<section class="hero"><div class="brand-row"><div class="logo">📚</div><div><div class="brand">${esc(CONFIG.program)}</div><div class="tag">${esc(CONFIG.tagline)}</div></div></div>
+      <div class="who"><span class="pill"><i class="dot"></i>${esc(CONFIG.districtName)} · ${esc(CONFIG.role)}</span>${aySel()}</div>${examBlocks()}</section>`;
+  } else {
+    h += pageHeader(n) + crumbs(n) + `<div class="sec">${examBlocks(n.type === 'school')}</div>`;
+  }
+  h += '<div class="sec">';
+  if (n.type !== 'school') h += searchBox(n);
+  h += `<div class="lbl">${TYPE_LABEL[n.type]} Summary${n.type === 'school' ? '' : ' · ' + esc(CONFIG.cycle).toUpperCase()}</div>${statCards(s)}
+    <div style="margin-top:12px">${distCard(s, n.type === 'school' ? 'Level Distribution – School' : 'Student Level Distribution', '#/acad/' + n.id)}</div>`;
+  if (n.type === 'school'){
+    h += `<div class="lbl">Student-wise Results</div><div class="chips" style="margin-bottom:10px">${CONFIG.classes.map((c, i) => `<button class="chip ${i === 0 ? 'on' : ''}">${esc(c)}</button>`).join('')}</div>${studentTable(n)}`;
+  } else {
+    h += overviewTable(n);
+  }
+  h += twoCards(n) + perfList(n) + qaList(n);
+  if (n.type !== 'school') h += `</div><button class="dl" data-xls="rep">⬇ Download Reports</button><div class="sec">`;
+  return h + '</div>';
+}
+function studentTable(n){
+  const rows = n.students.map((x, i) => `<tr class="go" data-go="#/n/${x.key}"><td class="stu"><span class="av a${i % 3}">S4</span><div>${esc(x.name)}<small>Roll ${x.roll}</small></div></td>${x.grades.map(g => `<td>${g == null ? '—' : gchip(g)}</td>`).join('')}<td>${gchip(x.overall)}</td></tr>`).join('');
+  return `<div class="card"><div class="band"><span>${esc(CONFIG.classes[0]).toUpperCase()}</span></div>
+    <div class="tw"><table style="min-width:430px"><thead><tr><th>Student</th>${SUBJ.map(s => `<th>${esc(s)}</th>`).join('')}<th>Overall</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+/* ---------- student page ---------- */
+const SCOL = ['#f59e0b', '#16a34a', '#dc2626', '#2563eb'], SDASH = ['2 3', '5 3', '5 3', ''], SORDER = [3, 1, 0, 2];
+const BARCOL = ['#dc2626', '#ea580c', '#f59e0b', '#16a34a'], MAXM = 50, MR = [[5, 19], [20, 29], [30, 37], [38, 50]];
+function gradeAt(x, si, c){
+  const last = CONFIG.journeyCycles.length - 1, g = x.grades[si];
+  if (g == null || c === last) return g;
+  const r = mulberry32(hash(x.key + si + c)), d = r() < .6 ? (r() < .5 ? -1 : 1) * (1 + (r() < .3 ? 1 : 0)) : 0;
+  return Math.max(0, Math.min(3, g + d));
+}
+function marksAt(x, si, c, g){ const [lo, hi] = MR[g], r = mulberry32(hash(x.key + 'm' + si + c)); return lo + Math.floor(r() * (hi - lo + 1)); }
+function journeyChart(x){
+  const cy = CONFIG.journeyCycles, W = 320, H = 190, pl = 30, pr = 18, top = 14, bot = 34;
+  const yOf = g => top + (3 - g) * ((H - top - bot) / 3);
+  const xOf = c => cy.length === 1 ? (pl + (W - pl - pr) / 2) : pl + 24 + c * ((W - pl - pr - 48) / (cy.length - 1));
+  let g = '';
+  for (let k = 0; k < 4; k++) g += `<line x1="${pl}" x2="${W - pr}" y1="${yOf(k)}" y2="${yOf(k)}" stroke="#e5e7eb" stroke-dasharray="3 3"/><text x="${pl - 8}" y="${yOf(k) + 4}" text-anchor="end" font-size="11" fill="#6b7280">${L[k].key}</text>`;
+  cy.forEach((c, i) => g += `<text x="${xOf(i)}" y="${H - 12}" text-anchor="middle" font-size="10" fill="#6b7280">${esc(c.replace(/20(\d\d)/, '$1'))}</text>`);
+  SORDER.forEach((si, k) => {
+    const off = (k - 1.5) * 5, pts = cy.map((c, i) => [xOf(i) + off, gradeAt(x, si, i)]).filter(p => p[1] != null);
+    if (pts.length > 1) g += `<polyline fill="none" stroke="${SCOL[si]}" stroke-width="2" stroke-dasharray="${SDASH[si]}" points="${pts.map(p => p[0] + ',' + yOf(p[1])).join(' ')}"/>`;
+    pts.forEach(p => g += `<circle cx="${p[0]}" cy="${yOf(p[1])}" r="5" fill="${SCOL[si]}"/><text x="${p[0]}" y="${yOf(p[1]) + (p[1] === 0 ? -9 : 15)}" text-anchor="middle" font-size="8" fill="#6b7280">${L[p[1]].key}</text>`);
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Subject level journey">${g}</svg>`;
+}
+function viewStudent(n){
+  const x = n.stu, sch = n.parent, cy = CONFIG.journeyCycles, last = cy.length - 1, ci = state.cyc == null ? last : Math.min(state.cyc, last);
+  let tot = 0, max = 0;
+  const rows = SORDER.map(si => {
+    const g = gradeAt(x, si, ci);
+    if (g == null) return `<div class="sp"><div class="spn">${esc(SUBJ[si])}</div><div>—</div><div class="spbar"></div><div class="spm">absent</div></div>`;
+    const m = marksAt(x, si, ci, g); tot += m; max += MAXM;
+    return `<div class="sp"><div class="spn">${esc(SUBJ[si])}</div>${gchip(g)}<div class="spbar"><i style="width:${m / MAXM * 100}%;background:${BARCOL[g]}"></i></div><div class="spm">${m}/${MAXM}</div></div>`;
+  }).join('');
+  const tp = max ? tot / max * 100 : 0, tg = tp >= 75 ? 3 : tp >= 60 ? 2 : tp >= 40 ? 1 : 0;
+  const legendHtml = `<div class="jl">${SORDER.map(si => `<span><svg width="22" height="6"><line x1="0" x2="22" y1="3" y2="3" stroke="${SCOL[si]}" stroke-width="2" stroke-dasharray="${SDASH[si]}"/></svg>${esc(SUBJ[si])}</span>`).join('')}</div>`;
+  return pageHeader(n, {title:x.name, sub:`${CONFIG.classes[0]} · Roll ${x.roll} · ${sch.title}`}) +
+    `<div class="sec"><div class="card pad" style="margin-top:14px"><div class="card-h"><span>Subject Level Journey</span></div>${legendHtml}${journeyChart(x)}</div>
+     <div class="eh"><div class="lbl">Subject-wise Performance</div><select class="ay" style="padding:8px 28px 8px 10px" data-cyc>${cy.map((c, i) => `<option value="${i}" ${i === ci ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
+     <div class="card">${rows}<div class="tot2"><span>Total Score</span><b style="color:${L[tg].color}">${tot}/${max} · ${tp.toFixed(2)}%</b></div></div></div>`;
+}
+function distBarKeys(d){
+  const t = sum(d) || 1;
+  return `<div class="dbar">${d.map((v, i) => `<div style="flex:${v / t * 100} 1 0;background:${L[i].color}"><span>${L[i].key}</span></div>`).join('')}</div>`;
+}
+function viewAcad(n){
+  const s = st(n), kids = (n.children && n.children.length) ? n.children : [];
+  const cells = d => { const t = sum(d); return L.map((l, i) => `<td><span class="gp" style="color:${l.color}">${fmtp(t ? d[i] / t * 100 : 0)}</span><small>${d[i]}</small></td>`).join(''); };
+  const head = first => `<thead><tr><th>${first}</th>${L.map(l => `<th style="color:${l.color};text-align:center">${l.key}</th>`).join('')}</tr></thead>`;
+  const clsChips = `<div class="chips" style="margin-bottom:10px">${CONFIG.classes.map((c, i) => `<button class="chip ${i === 0 ? 'on' : ''}">${esc(c)}</button>`).join('')}</div>`;
+  const tbl = (first, rows) => `<div class="card"><div class="tw"><table class="gt">${head(first)}<tbody>${rows}</tbody></table></div></div>`;
+  const clsNum = c => c.replace(/\D/g, '') || c;
+  return pageHeader(n, {title:'Academic Performance'}) + crumbs(n, 'Academic Performance') +
+    `<div class="sec"><div class="infobox"><span class="ii">i</span><span><b>${L[3].key} = Nipun</b> (Proficient) in this programme</span></div>
+     <div class="lbl">Overall · All Students</div>
+     <div class="card pad"><div class="tiles">${L.map((l, i) => `<div class="tile t${i}" style="color:${l.color}"><b>${fmtp(s.appeared ? s.dist[i] / s.appeared * 100 : 0)}</b><span>${l.key}</span><small>${s.dist[i]}</small></div>`).join('')}</div>
+       <div style="margin-top:10px">${distBarKeys(s.dist)}</div>${legend()}</div>
+     <div class="lbl">Subject-wise · All Classes</div>${clsChips}
+     ${tbl('Subject', `<tr><td>PAPER 1</td>${cells(s.pd1)}</tr><tr><td>PAPER 2</td>${cells(s.pd2)}</tr>`)}
+     <div class="lbl">Class-wise · All Subjects</div>
+     ${tbl('Class', CONFIG.classes.map(c => `<tr><td>${esc(clsNum(c))}</td>${cells(s.dist)}</tr>`).join(''))}
+     <div class="lbl">Class × Subject Breakdown</div>${clsChips}
+     ${tbl('Subject', SUBJ.map((name, i) => `<tr><td>${esc(name)}<span class="arr">→</span></td>${cells(s.subj[i])}</tr>`).join(''))}
+     ${kids.length ? `<div class="lbl">${CHILD_LABEL[n.type]}-wise · All Classes &amp; Subjects</div>
+       ${tbl(CHILD_LABEL[n.type], kids.map(x => `<tr class="go" data-go="#/acad/${x.id}"><td class="wrap">${esc(x.title)}</td>${cells(st(x).dist)}</tr>`).join(''))}` : ''}
+     </div>`;
+}
+function viewPart(n){
+  const s = st(n), kids = (n.children && n.children.length) ? n.children : [], U = CHILD_LABEL[n.type] || 'School';
+  const tname = TYPE_LABEL[n.type] + ' Total';
+  const defs = [
+    {k:'sch', label:'School Participation',  head:[U, 'Total', 'Participated', '%'], val:t => [fmt(t.total), fmt(t.part), pc(t.part, t.total)]},
+    {k:'stu', label:'Student Participation', head:[U, 'Total', 'Appeared', '%'],     val:t => [fmt(t.enrolled), fmt(t.appeared), pc(t.appeared, t.enrolled)]},
+    {k:'err', label:'Data Errors',           head:[U, 'Records', 'Erroneous', '%'],  val:t => [fmt(t.appeared), fmt(t.errors), pc(t.errors, t.appeared)]}
+  ];
+  const row = (name, v, cls, go) => `<tr class="${cls || ''}${go ? ' go' : ''}" ${go ? `data-go="#/part/${go}"` : ''}><td>${esc(name)}</td><td>${v[0]}</td><td>${v[1]}</td><td class="pc">${v[2]}%</td></tr>`;
+  const tables = defs.map(d => {
+    const open = state.exp[d.k], shown = open ? kids : kids.slice(0, 5), hidden = kids.length - 5;
+    return `<div class="lbl">${d.label}</div><div class="card"><div class="tw"><table class="pt"><thead><tr>${d.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
+      ${row(tname, d.val(s), 'tot')}${shown.map(x => row(x.name, d.val(st(x)), '', x.id)).join('')}
+      ${hidden > 0 ? `<tr class="moreRow"><td colspan="4" data-exp="${d.k}">${open ? 'Show less' : `+ ${hidden} more ${U.toLowerCase()}s in this list`}</td></tr>` : ''}
+      </tbody></table></div></div>`;
+  }).join('');
+  const errRows = ET.map((e, i) => `<tr><td class="wrap" style="font-weight:500">${esc(e)}</td><td class="c${s.errTypes[i] ? 1 : 0}">${s.errTypes[i]}</td><td class="c${s.errTypes[i] ? 1 : 0}">${pc(s.errTypes[i], s.appeared, 1)}%</td></tr>`).join('');
+  return pageHeader(n, {title:'Participation & Data'}) +
+    `<div class="sec">${tables}
+     <div class="eh"><div class="lbl">Data Error Types</div><button class="xls" data-xls="err">⬇ XLS</button></div>
+     <div class="card"><table><thead><tr><th>Error type</th><th>Count</th><th>%</th></tr></thead><tbody>${errRows}
+       <tr class="tot"><td class="wrap" style="background:#eaf1ff">Total data errors</td><td>${s.errors}</td><td>${pc(s.errors, s.appeared, 1)}%</td></tr></tbody></table></div></div>`;
+}
+const RANK_TITLES = {rankTS:['Top Performing Schools','D3','school',true], rankBS:['Bottom Performing Schools','D4','school',false], rankTC:['Top Performing Clusters','D5','cluster',true], rankBC:['Bottom Performing Clusters','D6','cluster',false]};
+function rankRows(n, view){
+  const [, , type, top] = RANK_TITLES[view], R = state.rk[view] || (state.rk[view] = {key:top ? 'a' : 'd', rows:20});
+  const all = ranked(n, type, top, R.key);
+  return {all, shown:R.rows === 'all' ? all : all.slice(0, R.rows), R, type, top};
+}
+function viewRank(n, view){
+  const [title, badge] = RANK_TITLES[view], {all, shown, R, type, top} = rankRows(n, view);
+  const chips = [[top ? 'a' : 'd', '% ' + L[top ? 3 : 0].key], ['part', 'Students Part.'], ['err', 'Data Errors']];
+  const rows = shown.map((x, i) => { const t = st(x), e = rv(x, 'err');
+    return `<tr class="go" data-go="#/n/${x.id}"><td>${i + 1}</td><td class="rname"><i class="rdot" style="background:${t.errors ? 'var(--orange)' : 'var(--green)'}"></i>${esc(x.title)}</td>
+      <td class="ra">${pc(t.dist[3], t.appeared)}%</td><td class="rd">${pc(t.dist[0], t.appeared)}%</td><td><b>${t.appeared}</b></td>
+      <td class="rm2">${Math.round(rv(x, 'part') * 100)}%</td><td class="${e ? 're' : 'ra'}">${Math.round(e * 100)}%</td><td><b>${fmt(t.enrolled)}</b></td></tr>`; }).join('');
+  return pageHeader(n, {title, badge, sub:`${n.name} · ${state.exam} · ${CONFIG.cycle}`}) + crumbs(n, title) +
+    `<div class="rkctl"><div class="rkrow"><span class="lb2">SORT BY</span>${chips.map(([k, l]) => `<button class="sch ${R.key === k ? 'on' : ''}" data-rk="${k}">${l}</button>`).join('')}</div>
+      <div class="rkrow" style="justify-content:space-between"><div style="display:flex;align-items:center;gap:10px"><span class="lb2">SHOW</span>
+        <select class="rows" data-rows>${[10, 20, 50, 'all'].map(v => `<option value="${v}" ${R.rows === v ? 'selected' : ''}>${v === 'all' ? 'All rows' : v + ' rows'}</option>`).join('')}</select></div>
+        <button class="xls big" data-xls="rank">⬇ XLS</button></div></div>
+    <div class="info" style="border-top:1px solid var(--border)">Showing ${shown.length} of ${all.length} ${type}s</div>
+    <div class="tw"><table class="rkt"><thead><tr><th>#</th><th>${type === 'school' ? 'School' : 'Cluster'}</th><th>${L[3].key}%</th><th>${L[0].key}%</th><th>Assessed</th><th>Stu%</th><th>Err%</th><th>Total Students</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function exportRank(n, view){
+  const [title, , type] = RANK_TITLES[view], {shown} = rankRows(n, view);
+  downloadXls(`${title}_${n.id}_${state.exam}_${CONFIG.cycle}`, [{title:title + ' – ' + n.title, head:['#', type === 'school' ? 'School' : 'Cluster', L[3].key + '%', L[0].key + '%', 'Assessed', 'Stu%', 'Err%', 'Total Students'],
+    rows:shown.map((x, i) => { const t = st(x); return [i + 1, x.title, pc(t.dist[3], t.appeared) + '%', pc(t.dist[0], t.appeared) + '%', t.appeared, Math.round(rv(x, 'part') * 100) + '%', Math.round(rv(x, 'err') * 100) + '%', t.enrolled]; })}]);
+}
+function viewQ(n, kind){
+  const subj = CONFIG.questionSubjects[state.qs], all = qList(n, subj, kind);
+  let list = all.slice();   // all questions, already ordered (top: high→low, hard: low→high)
+  if (state.qsort) list.sort((a, b) => state.qsort.key === 'q' ? (a.q - b.q) * state.qsort.dir : (b.pct - a.pct) * state.qsort.dir);
+  const title = kind === 'top' ? 'Top Attempted Questions' : 'Most Difficult Questions';
+  const col = kind === 'top' ? 'var(--green)' : 'var(--red)';
+  const arrow = k => state.qsort && state.qsort.key === k ? (state.qsort.dir > 0 ? '↑' : '↓') : '↕';
+  const rows = list.map((x, i) => `<div class="qrow"><div class="qi">${i + 1}</div><div class="qn">Q${x.q}</div>
+    <div><div class="qt" data-full="${esc(x.t)}">${esc(x.t)}</div><div class="qbar"><i style="width:${x.pct}%;background:${col}"></i></div></div>
+    <div class="qp" style="color:${col}">${x.pct}%</div></div>`).join('');
+  return pageHeader(n, {title}) + crumbs(n, title) +
+    `<div class="sec"><div class="lbl" style="margin-top:12px">Class</div><div class="chips">${CONFIG.classes.map((c, i) => `<button class="chip sm ${i === 0 ? 'on' : ''}">${esc(c)}</button>`).join('')}</div></div>
+     <div class="info" style="margin-top:10px;border-top:1px solid var(--border)">Showing ${list.length} of ${all.length} questions</div>
+     <div class="sec"><div class="scroll-x" style="margin-top:14px">${CONFIG.questionSubjects.map((s, i) => `<button class="chip ${i === state.qs ? 'on' : ''}" data-qsub="${i}">${esc(s)}</button>`).join('')}</div>
+     <div class="cap">${esc(n.title)} · ${esc(subj)} · ${esc(CONFIG.cycle)} · ${kind === 'top' ? 'Most students got right' : 'Most students got wrong'} · Showing all ${list.length} · ${kind === 'top' ? 'highest to lowest' : 'lowest to highest'}</div>
+     <div class="card q-${kind}"><div class="qhead"><div>#</div><div data-qsort="q">Q.No ${arrow('q')}</div><div>Description</div><div data-qsort="pct" style="text-align:right;color:${col};font-weight:700">% ${arrow('pct')}</div></div>${rows}</div></div>`;
+}
+
+/* ---------- see-more clamp (max 2 lines, "See more" sits at the end of line 2) ---------- */
+function fitOne(el){
+  const full = el.dataset.full, lh = parseFloat(getComputedStyle(el).lineHeight) || 18, maxH = lh * 2 + 2;
+  el.textContent = full;
+  if (el.offsetHeight <= maxH) return;
+  const build = n => esc(full.slice(0, n).trimEnd()) + '… <span class="more">See more</span>';
+  let lo = 0, hi = full.length;
+  while (lo < hi){ const mid = Math.ceil((lo + hi) / 2); el.innerHTML = build(mid); if (el.offsetHeight <= maxH) lo = mid; else hi = mid - 1; }
+  el.innerHTML = build(lo);
+}
+const fitAll = () => document.querySelectorAll('.qt').forEach(el => { if (!el.dataset.open) fitOne(el); });
+
+/* ---------- XLS export (Excel opens HTML tables saved as .xls) ---------- */
+function downloadXls(name, sections){
+  let h = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body>';
+  sections.forEach(s => {
+    h += `<table border="1"><tr><td colspan="${s.head.length}"><b>${esc(s.title)}</b></td></tr><tr>${s.head.map(x => `<th style="background:#e5e7eb">${esc(x)}</th>`).join('')}</tr>${s.rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table><br>`;
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + h + '</body></html>'], {type:'application/vnd.ms-excel;charset=utf-8'}));
+  a.download = name.replace(/[^\w.-]+/g, '_') + '.xls';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function errSections(n){
+  const s = st(n), out = [
+    {title:'Error analysis – ' + n.title, head:['Scope','Exam type','Cycle','Students appeared','Total data errors','Error %'], rows:[[n.title, state.exam, CONFIG.cycle, s.appeared, s.errors, pc(s.errors, s.appeared, 1) + '%']]},
+    {title:'Data error types', head:['#','Error type','Count','% of appeared'], rows:ET.map((e, i) => [i + 1, e, s.errTypes[i], pc(s.errTypes[i], s.appeared, 1) + '%'])}
+  ];
+  if (n.children && n.children.length){
+    out.push({title:CHILD_LABEL[n.type] + '-wise error breakdown', head:[CHILD_LABEL[n.type], ...ET, 'Total'],
+      rows:n.children.map(c => { const t = st(c); return [c.title, ...t.errTypes, t.errors]; })});
+  }
+  return out;
+}
+function exportErrors(n){ downloadXls(`Error_Analysis_${n.id}_${state.exam}_${CONFIG.cycle}`, errSections(n)); }
+function exportReport(n){
+  const s = st(n), secs = [
+    {title:'Summary – ' + n.title, head:['Exam type','Cycle','Schools participating','Total schools','Students enrolled','Students appeared','Participation %','Data errors %'], rows:[[state.exam, CONFIG.cycle, s.part, s.total, s.enrolled, s.appeared, pc(s.appeared, s.enrolled, 1) + '%', pc(s.errors, s.appeared, 1) + '%']]},
+    {title:'Level distribution', head:['Grade','Name','Students','%'], rows:[3,2,1,0].map(i => [L[i].key, L[i].name, s.dist[i], pc(s.dist[i], s.appeared, 1) + '%'])}
+  ];
+  if (n.children && n.children.length) secs.push({title:CHILD_LABEL[n.type] + '-wise overview', head:[CHILD_LABEL[n.type], '# ' + L[0].key, '# ' + L[1].key, '# ' + L[2].key, '# ' + L[3].key, 'Appeared', 'Enrolled', 'Errors'],
+    rows:n.children.map(c => { const t = st(c); return [c.title, ...t.dist, t.appeared, t.enrolled, t.errors]; })});
+  downloadXls(`Report_${n.id}_${state.exam}_${CONFIG.cycle}`, [...secs, ...errSections(n).slice(1, 2)]);
+}
+
+/* ---------- router + events ---------- */
+function route(){
+  const m = location.hash.match(/^#\/(\w+)\/(\w+)$/);
+  let view = m ? m[1] : 'n', id = fallbackId(m ? m[2] : 'thane');
+  return {view, id};
+}
+function render(){
+  const {view, id} = route(), n = find(id);
+  let body;
+  if (n.type === 'student') body = viewStudent(n);
+  else if (view === 'acad') body = viewAcad(n);
+  else if (view === 'part') body = viewPart(n);
+  else if (RANK_TITLES[view]) body = viewRank(n, view);
+  else if (view === 'qtop') body = viewQ(n, 'top');
+  else if (view === 'qhard') body = viewQ(n, 'hard');
+  else body = viewOverview(n);
+  document.getElementById('app').innerHTML = topbar() + '<main>' + body + '</main>';
+  requestAnimationFrame(fitAll);
+}
+function backTarget(){
+  const {view, id} = route(), n = find(id);
+  return view === 'n' ? (n.parent ? n.parent.id : null) : id;
+}
+document.addEventListener('click', e => {
+  const t = e.target;
+  const more = t.closest('.more'), less = t.closest('.less');
+  if (more){ const el = more.closest('.qt'); el.dataset.open = 1; el.innerHTML = esc(el.dataset.full) + ' <span class="less">See less</span>'; return; }
+  if (less){ const el = less.closest('.qt'); delete el.dataset.open; fitOne(el); return; }
+  const back = t.closest('[data-back]');
+  if (back){ const id = backTarget(); if (id) location.hash = '#/n/' + id; return; }
+  const ex = t.closest('[data-exam]');
+  if (ex){ state.exam = ex.dataset.exam; const {view, id} = route(); const nid = fallbackId(id); history.replaceState(null, '', `#/${view}/${nid}`); render(); return; }
+  const so = t.closest('[data-sort]');
+  if (so){ const k = so.dataset.sort; state.sort = state.sort.key === k ? {key:k, dir:-state.sort.dir} : {key:k, dir:1}; render(); return; }
+  const qs = t.closest('[data-qsub]'); if (qs){ state.qs = +qs.dataset.qsub; render(); return; }
+  const qo = t.closest('[data-qsort]');
+  if (qo){ const k = qo.dataset.qsort; state.qsort = state.qsort && state.qsort.key === k ? {key:k, dir:-state.qsort.dir} : {key:k, dir:1}; render(); return; }
+  const ex2 = t.closest('[data-exp]'); if (ex2){ state.exp[ex2.dataset.exp] = !state.exp[ex2.dataset.exp]; render(); return; }
+  const rk = t.closest('[data-rk]'); if (rk){ const v = route().view; state.rk[v].key = rk.dataset.rk; render(); return; }
+  const ef = t.closest('[data-ef]'); if (ef){ state.ef = +ef.dataset.ef; render(); return; }
+  const xl = t.closest('[data-xls]'); if (xl){ const {view, id} = route(), n = find(id); xl.dataset.xls === 'err' ? exportErrors(n) : xl.dataset.xls === 'rank' ? exportRank(n, view) : exportReport(n); return; }
+  const go = t.closest('[data-go]'); if (go){ location.hash = go.dataset.go; }
+});
+document.addEventListener('change', e => {
+  if (e.target.matches('[data-ay]')) state.ay = e.target.value;
+  if (e.target.matches('[data-rows]')){ const v = route().view; state.rk[v].rows = e.target.value === 'all' ? 'all' : +e.target.value; render(); }
+  if (e.target.matches('[data-cyc]')){ state.cyc = +e.target.value; render(); }
+});
+document.addEventListener('input', e => {
+  if (!e.target.matches('#sq')) return;
+  const q = e.target.value.trim().toLowerCase(), box = document.getElementById('sres');
+  if (!q){ box.innerHTML = ''; return; }
+  const hits = descend(find(e.target.dataset.scope), 'school').filter(s => s.title.toLowerCase().includes(q)).slice(0, 8);
+  box.innerHTML = hits.length ? hits.map(s => `<div class="sr" data-go="#/n/${s.id}">${esc(s.name)}<small>${s.id} · ${esc(s.parent.name)}</small></div>`).join('') : '<div class="sr">No school found</div>';
+});
+window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
+let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(fitAll, 120); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitAll);
+renderNav(); render();
+</script>
+</body>
+</html>

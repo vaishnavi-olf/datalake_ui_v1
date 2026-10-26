@@ -232,6 +232,24 @@
   .omr svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2}
   .spw{border-bottom:1px solid #eef0f3}.spw .sp{border-bottom:0;padding-bottom:4px}
   .spo{display:flex;justify-content:flex-end;padding:0 14px 10px}
+  /* Student Level Breakdown bottom sheet (SE / NMMSE / JNV) */
+  .lvs{position:fixed;inset:0;z-index:90;background:rgba(17,24,39,.45);display:flex;align-items:flex-end;justify-content:center}
+  .lvs[hidden]{display:none}
+  .lvs-in{width:100%;max-width:720px;background:#fff;border-radius:18px 18px 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 30px rgba(0,0,0,.18);max-height:85vh;overflow:auto}
+  .lvs-grip{width:40px;height:4px;border-radius:4px;background:#d1d5db;margin:0 auto 14px}
+  .lvs h3{margin:0;font-size:18px;font-weight:800}
+  .lvs .lvs-sub{color:var(--sub);font-size:13px;margin:6px 0 14px}
+  .lvs-box{background:#f5f7fb;border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:grid;gap:10px}
+  .lvs-row{display:grid;grid-template-columns:62px 1fr 92px;gap:10px;align-items:center}
+  .lvs-row b{font-size:14px;font-weight:800}.lvs-row b small{font-size:11px;font-weight:600;color:var(--sub);margin-left:4px}
+  .lvs-bar{height:10px;border-radius:6px;background:#dde1ea;overflow:hidden}.lvs-bar i{display:block;height:100%;border-radius:6px}
+  .lvs-row span{font-size:12px;text-align:right;white-space:nowrap}
+  .lvs-box.fl .lvs-row{grid-template-columns:30px 1fr 92px}
+  .lvs-mv{margin-top:12px;display:block;padding:14px}
+  .lvs-mt{font-size:13px;color:#4b5563}
+  .lvs-mn{font-size:24px;font-weight:800;color:var(--green);margin:8px 0 4px}
+  .lvs-ms{font-size:12px;color:#9ca3af}
+  .lvs-go{display:block;margin-top:12px;text-align:right;font-size:13px;color:var(--blue);font-weight:600}
   .omrv{position:fixed;inset:0;z-index:100;background:rgba(17,24,39,.92);display:flex;justify-content:center}
   .omrv[hidden]{display:none}
   .omrv-in{width:100%;max-width:720px;display:flex;flex-direction:column;background:#111827}
@@ -862,7 +880,7 @@ function distBar(d, thin){
 }
 const legend = () => `<div class="legend">${L.map(l => `<span><i style="background:${l.color}"></i>${l.key}${CONFIG.legendSep}${esc(l.name)}</span>`).join('')}</div>`;
 function distCard(s, title, link){
-  return `<div class="card pad"><div class="card-h"><span>${esc(title)}</span>${link ? `<a data-go="${link}">Details ↗</a>` : ''}</div>${legend()}${distBar(s.dist)}</div>`;
+  return `<div class="card pad"><div class="card-h"><span>${esc(title)}</span>${link ? `<a href="javascript:void 0" data-lvl="${link.split('/').pop()}">Details ↗</a>` : ''}</div>${legend()}${distBar(s.dist)}</div>`;
 }
 function statCards(s){
   if (CONFIG.rateCards) return `<div class="cards">
@@ -1213,6 +1231,36 @@ function openOmr(ref){
   v.querySelector('[data-omr-zoom]').textContent = '＋';
   v.hidden = false; document.body.style.overflow = 'hidden'; v.querySelector('[data-omr-close]').focus();
 }
+/* ---------- Student Level Breakdown (D–A with score ranges) ---------- */
+function openLevels(id){
+  const n = find(id); if (!n) return;
+  const st0 = st(n), t = st0.appeared, F = isFLN();
+  /* FLN: students whose level went up vs. the previous cycle (same student, same class filter). Hidden when there is no previous cycle. */
+  let move = '';
+  if (F && state.fcyc > 0){
+    const prevC = CONFIG.cycles[state.fcyc - 1], pdb = cycleDB(state.exam, prevC);
+    let up = 0;
+    (n.type === 'school' ? [n] : descend(n, 'school')).forEach(sc => sc.students.forEach(x => {
+      if (state.cls && x.cls !== state.cls) return;
+      const o = pdb.byId[x.key]; if (o && o.stu && x.overall > o.stu.overall) up++;
+    }));
+    move = `<div class="lvs-box lvs-mv"><div class="lvs-mt">Students moving up a level since last cycle (${esc(prevC)}):</div>
+      <div class="lvs-mn">+${fmt(up)} students ↑</div><div class="lvs-ms">${pc(up, t)}% of all students improved by at least one level</div></div>`;
+  }
+  let v = document.getElementById('lvs');
+  if (!v){
+    v = document.createElement('div'); v.id = 'lvs'; v.className = 'lvs'; v.hidden = true;
+    v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true'); v.setAttribute('aria-label', 'Student Level Breakdown');
+    document.body.appendChild(v);
+  }
+  v.innerHTML = `<div class="lvs-in"><div class="lvs-grip"></div><h3>Student Level Breakdown</h3>
+    <div class="lvs-sub">${esc(n.name)} · ${esc(examLabel(state.exam))} · ${esc(CONFIG.cycle)}${F && state.cls ? ' · ' + esc(CONFIG.classes[state.cls - 1]) : ''} · ${fmt(t)} students</div>
+    <div class="lvs-box${F ? ' fl' : ''}">${L.map((l, i) => { const c = st0.dist[i], w = t ? c / t * 100 : 0;
+      return `<div class="lvs-row"><b style="color:${l.color}">${esc(l.key)}${F ? '' : `<small>${esc(l.name)}</small>`}</b><div class="lvs-bar"><i style="width:${w}%;background:${l.color}"></i></div><span style="color:${l.color}">${fmt(c)} (${Math.round(w)}%)</span></div>`; }).join('')}</div>${move}
+    <a class="lvs-go" data-go="#/acad/${n.id}">View Academic Performance →</a></div>`;
+  v.hidden = false; document.body.style.overflow = 'hidden';
+}
+function closeLevels(){ const v = document.getElementById('lvs'); if (v && !v.hidden){ v.hidden = true; document.body.style.overflow = ''; } }
 function closeOmr(){ const v = document.getElementById('omrv'); if (v && !v.hidden){ v.hidden = true; v.querySelector('img').removeAttribute('src'); document.body.style.overflow = ''; } }
 
 /* height of a .v5 overview = header + total + 5 rows; the rest scrolls */
@@ -1255,6 +1303,9 @@ document.addEventListener('click', e => {
   const more = t.closest('.more'), less = t.closest('.less');
   if (more){ const el = more.closest('.qt'); el.dataset.open = 1; el.innerHTML = esc(el.dataset.full) + ' <span class="less">See less</span>'; return; }
   if (less){ const el = less.closest('.qt'); delete el.dataset.open; fitOne(el); return; }
+  const lv = t.closest('[data-lvl]'); if (lv){ e.preventDefault(); openLevels(lv.dataset.lvl); return; }
+  if (t.classList && t.classList.contains('lvs')){ closeLevels(); return; }          // tap outside the sheet
+  if (t.closest('.lvs-go')) closeLevels();
   const om = t.closest('[data-omr]'); if (om){ openOmr(om.dataset.omr); return; }
   if (t.closest('[data-omr-close]')){ closeOmr(); return; }
   const oz = t.closest('[data-omr-zoom]');
@@ -1295,8 +1346,8 @@ document.addEventListener('input', e => {
   const hits = descend(find(e.target.dataset.scope), 'school').filter(s => s.title.toLowerCase().includes(q)).slice(0, 8);
   box.innerHTML = hits.length ? hits.map(s => `<div class="sr" data-go="#/n/${s.id}">${esc(s.name)}<small>${s.id} · ${esc(s.parent.name)}</small></div>`).join('') : '<div class="sr">No school found</div>';
 });
-window.addEventListener('hashchange', () => { closeOmr(); render(); window.scrollTo(0, 0); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeOmr(); });
+window.addEventListener('hashchange', () => { closeOmr(); closeLevels(); render(); window.scrollTo(0, 0); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape'){ closeOmr(); closeLevels(); } });
 let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { fitAll(); fitV5(); }, 120); });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitAll);
 applyProfile(); renderNav(); render();

@@ -240,11 +240,10 @@
   .lvs h3{margin:0;font-size:18px;font-weight:800}
   .lvs .lvs-sub{color:var(--sub);font-size:13px;margin:6px 0 14px}
   .lvs-box{background:#f5f7fb;border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:grid;gap:10px}
-  .lvs-row{display:grid;grid-template-columns:62px 1fr 92px;gap:10px;align-items:center}
+  .lvs-row{display:grid;grid-template-columns:minmax(0,1fr) 60px minmax(0,1fr);gap:8px;align-items:center}
   .lvs-row b{font-size:14px;font-weight:800}.lvs-row b small{font-size:11px;font-weight:600;color:var(--sub);margin-left:4px}
-  .lvs-bar{height:10px;border-radius:6px;background:#dde1ea;overflow:hidden}.lvs-bar i{display:block;height:100%;border-radius:6px}
-  .lvs-row span{font-size:12px;text-align:right;white-space:nowrap}
-  .lvs-box.fl .lvs-row{grid-template-columns:30px 1fr 92px}
+  .lvs-bar{height:8px;border-radius:6px;background:#dde1ea;overflow:hidden}.lvs-bar i{display:block;height:100%;border-radius:6px}
+  .lvs-row span{font-size:12px;text-align:right;line-height:1.3;overflow-wrap:anywhere}
   .lvs-mv{margin-top:12px;display:block;padding:14px}
   .lvs-mt{font-size:13px;color:#4b5563}
   .lvs-mn{font-size:24px;font-weight:800;color:var(--green);margin:8px 0 4px}
@@ -386,7 +385,8 @@ const PROFILES = {
     omrSheets: 1,
     journeyOrder: [0, 1, 2, 3]
   },
-  Scholarship: { examFilters: ['ThaneZP_SE_4th_Oct26', 'ThaneZP_Scholarship_7th_Oct26'] },
+  Scholarship: { examFilters: [],
+                 classTabs: [{label:'Class 4', data:true}, {label:'Class 7', data:false}] },   // Class 7: no results uploaded yet
   FLN: {
     omrSheets: 1,
     rateCards: true,
@@ -770,7 +770,7 @@ function buildFLN(specs, cyc){
 }
 const DBS = {};
 const state = {rk:{}, cyc:null, exam:CONFIG.examTypes[0], ay:CONFIG.academicYears[0], sort:{key:'name', dir:1}, qs:0, qsort:null, ef:0, exp:{},
-  fcyc:null, cls:0, acs:0, acb:0, trend:3};   // selected cycle index; FLN: class filter (0 = All), academic-page tabs, trend level
+  fcyc:null, ct:0, cls:0, acs:0, acb:0, trend:3};   // selected cycle index; FLN: class filter (0 = All), academic-page tabs, trend level
 /* one hierarchy per programme + cycle, built only from that cycle's data */
 const cycleDB = (exam, cyc) => DBS[exam + '|' + cyc] || (DBS[exam + '|' + cyc] = exam === 'FLN'
   ? buildFLN(PROGRAMME_CYCLES.FLN[cyc](), cyc) : buildDB(PROGRAMME_CYCLES[exam][cyc](), {NMMS:11, Scholarship:29, JNV:53}[exam]));
@@ -860,7 +860,7 @@ const topbar = () => `<div class="topbar"><button class="ibtn" data-go="#/n/${CO
   <nav class="tabs"><button class="tab on">Exams</button><button class="tab">My Post</button><button class="tab">Bookmark</button></nav>`;
 const aySel = () => `<select class="ay" data-ay>${CONFIG.academicYears.map(a => `<option ${a === state.ay ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select>`;
 function pageHeader(n, o = {}){
-  return `<div class="hdr"><button class="back" data-back>←</button><div class="hdr-t"><div class="ttl">${esc(o.title || n.title)}${o.badge ? `<span class="badge">${o.badge}</span>` : ''}</div>${o.sub ? `<div class="hsub">${esc(o.sub)}</div>` : ''}</div>${aySel()}</div>`;
+  return `<div class="hdr">${n.parent || o.title ? '<button class="back" data-back>←</button>' : ''}<div class="hdr-t"><div class="ttl">${esc(o.title || n.title)}${o.badge ? `<span class="badge">${o.badge}</span>` : ''}</div>${o.sub ? `<div class="hsub">${esc(o.sub)}</div>` : ''}</div>${aySel()}</div>`;
 }
 function crumbs(n, page){
   if (page) return `<div class="crumbs"><a data-go="#/n/${n.id}">${esc(n.type === 'district' ? n.name : n.title)}</a><span class="sep">›</span><b>${esc(page)}</b></div>`;
@@ -871,7 +871,8 @@ function examBlocks(withFilter){
   return `<div class="lbl">Exam Type</div><div class="chips">${CONFIG.examTypes.map(e => `<button class="chip ${e === state.exam ? 'on' : ''}" data-exam="${esc(e)}">${esc(examLabel(e))}</button>`).join('')}</div>
     <div class="lbl">Cycle</div><div class="chips">${CONFIG.cycles.map((c, i) => `<button class="chip ${i === state.fcyc ? 'cyc' : 'flt'}" data-fcyc="${i}">${esc(c)}</button>`).join('')}</div>
     ${F ? `<div class="lbl">Classes</div><div class="scroll-x">${['All', ...CONFIG.classes].map((c, i) => `<button class="chip flt ${i === state.cls ? 'on' : ''}" data-cls="${i}">${esc(c)}</button>`).join('')}</div>` : ''}
-    ${withFilter && CONFIG.examFilters.length ? `<div class="lbl">Exam Filter</div><div class="scroll-x">${CONFIG.examFilters.map((f, i) => `<button class="chip flt ${i === state.ef ? 'on' : ''}" data-ef="${i}">${esc(f)}</button>`).join('')}</div>` : ''}`;
+    ${CONFIG.classTabs ? `<div class="lbl">Classes</div><div class="scroll-x">${CONFIG.classTabs.map((c, i) => `<button class="chip flt ${i === state.ct ? 'on' : ''}" data-ct="${i}">${esc(c.label)}</button>`).join('')}</div>` : ''}
+    ${withFilter && CONFIG.examFilters.length > 1 ? `<div class="lbl">Exam Filter</div><div class="scroll-x">${CONFIG.examFilters.map((f, i) => `<button class="chip flt ${i === state.ef ? 'on' : ''}" data-ef="${i}">${esc(f)}</button>`).join('')}</div>` : ''}`;
 }
 const gchip = g => `<span class="gchip g${g}">${lk(g)}</span>`;
 function distBar(d, thin){
@@ -892,9 +893,9 @@ function statCards(s){
     <div class="sc"><div class="v b">${s.part}<small> /${fmt(s.total)}</small></div><div class="k">Schools participating</div></div>
     <div class="sc"><div class="v g">${fmt(s.appeared)}</div><div class="k">Students appeared</div></div></div>
     <div class="cards3">
-    <div class="sc3"><div class="v o">${fmt(s.p1)}</div><div class="k">Students Participation in Paper 1</div></div>
-    <div class="sc3"><div class="v o">${fmt(s.p2)}</div><div class="k">Students Participation in Paper 2</div></div>
-    <div class="sc3"><div class="v n">${fmt(s.pb)}</div><div class="k">Students Participation in Paper 1 &amp; 2 Both</div></div></div>`;
+    <div class="sc3"><div class="v o">${fmt(s.p1)}</div><div class="k">Students in Paper 1</div></div>
+    <div class="sc3"><div class="v o">${fmt(s.p2)}</div><div class="k">Students in Paper 2</div></div>
+    <div class="sc3"><div class="v n">${fmt(s.pb)}</div><div class="k">Students in Paper 1 &amp; 2</div></div></div>`;
 }
 const TYPE_LABEL = {district:'District', block:'Block', cluster:'Cluster', school:'School'};
 const CHILD_LABEL = {district:'Block', block:'Cluster', cluster:'School'};
@@ -973,7 +974,7 @@ function perfList(n){
 }
 function qaList(n){
   const sub = CONFIG.questionSubjects[0];
-  const t = kind => qList(n, sub, kind).slice(0, 2).map(x => `Q${x.q} · ${x.pct}%`).join(' | ') + '…';
+  const t = kind => qList(n, sub, kind).slice(0, 2).map(x => `Q${x.q} · ${kind === 'hard' ? (100 - x.pct) + '% wrong' : x.pct + '%'}`).join(' | ') + '…';
   return `<div class="lbl">Question Analysis</div>
     <div class="li" data-go="#/qtop/${n.id}"><div class="ic gr">✅</div><div class="tx"><b>Top Correctly Answered Questions</b><span>${t('top')}</span></div><div class="ar">→</div></div>
     <div class="li" data-go="#/qhard/${n.id}"><div class="ic rd">❌</div><div class="tx"><b>Most Difficult Questions</b><span>${t('hard')}</span></div><div class="ar">→</div></div>`;
@@ -983,12 +984,10 @@ const searchBox = n => `<div class="lbl">School Search</div><div class="search">
 /* ---------- views ---------- */
 function viewOverview(n){
   const s = st(n); let h = '';
-  if (n.type === 'district'){
-    h += `<section class="hero"><div class="brand-row"><div class="logo">📚</div><div><div class="brand">${esc(CONFIG.program)}</div><div class="tag">${esc(CONFIG.tagline)}</div></div></div>
-      <div class="who"><span class="pill"><i class="dot"></i>${esc(CONFIG.districtName)} · ${esc(CONFIG.role)}</span>${aySel()}</div>${examBlocks(true)}</section>`;
-  } else {
-    h += pageHeader(n) + crumbs(n) + `<div class="sec">${examBlocks(true)}</div>`;
-  }
+  // landing (district) page uses the same header layout as block / cluster / school pages
+  h += n.type === 'district' ? pageHeader(n, {sub:CONFIG.role}) + `<div class="sec">${examBlocks(true)}</div>`
+                             : pageHeader(n) + crumbs(n) + `<div class="sec">${examBlocks(true)}</div>`;
+  if (noClassData()) return h + `<div class="sec"><div class="infobox" style="margin-top:14px"><span class="ii">i</span><span>No results uploaded yet for <b>${esc(CONFIG.classTabs[state.ct].label)}</b> in ${esc(CONFIG.cycle)}.</span></div></div>`;
   h += '<div class="sec">';
   if (n.type !== 'school') h += searchBox(n);
   h += `<div class="lbl">${TYPE_LABEL[n.type]} Summary${n.type === 'school' ? '' : ' · ' + esc(CONFIG.cycle).toUpperCase()}</div>${statCards(s)}
@@ -1139,20 +1138,19 @@ function exportRank(n, view){
 }
 function viewQ(n, kind){
   const subj = CONFIG.questionSubjects[state.qs], all = qList(n, subj, kind);
-  let list = all.slice();   // all questions, already ordered (top: high→low, hard: low→high)
-  if (state.qsort) list.sort((a, b) => state.qsort.key === 'q' ? (a.q - b.q) * state.qsort.dir : (b.pct - a.pct) * state.qsort.dir);
+  // top: % who got it right; hard: % who got it wrong — both listed highest to lowest
+  let list = all.map(x => kind === 'hard' ? {...x, pct:100 - x.pct} : x).sort((a, b) => b.pct - a.pct);
   const title = kind === 'top' ? 'Top Attempted Questions' : 'Most Difficult Questions';
   const col = kind === 'top' ? 'var(--green)' : 'var(--red)';
-  const arrow = k => state.qsort && state.qsort.key === k ? (state.qsort.dir > 0 ? '↑' : '↓') : '↕';
   const rows = list.map((x, i) => `<div class="qrow"><div class="qi">${i + 1}</div><div class="qn">Q${x.q}</div>
-    <div><div class="qt" data-full="${esc(x.t)}">${esc(x.t)}</div><div class="qbar"><i style="width:${x.pct}%;background:${col}"></i></div></div>
+    <div><div class="qt" data-full="${esc(x.t)}">${esc(x.t)}</div></div>
     <div class="qp" style="color:${col}">${x.pct}%</div></div>`).join('');
   return pageHeader(n, {title}) + crumbs(n, title) +
     `<div class="sec"><div class="lbl" style="margin-top:12px">Class</div><div class="chips">${isFLN() ? ['All', ...CONFIG.classes].map((c, i) => `<button class="chip flt ${i === state.cls ? 'on' : ''}" data-cls="${i}">${esc(c)}</button>`).join('') : CONFIG.classes.map((c, i) => `<button class="chip sm ${i === 0 ? 'on' : ''}">${esc(c)}</button>`).join('')}</div></div>
      <div class="info" style="margin-top:10px;border-top:1px solid var(--border)">Showing ${list.length} of ${all.length} questions</div>
      <div class="sec"><div class="scroll-x" style="margin-top:14px">${CONFIG.questionSubjects.map((s, i) => `<button class="chip ${i === state.qs ? 'on' : ''}" data-qsub="${i}">${esc(s)}</button>`).join('')}</div>
-     <div class="cap">${esc(n.title)} · ${esc(subj)} · ${esc(CONFIG.cycle)} · ${kind === 'top' ? 'Most students got right' : 'Most students got wrong'} · Showing all ${list.length} · ${kind === 'top' ? 'highest to lowest' : 'lowest to highest'}</div>
-     <div class="card q-${kind}"><div class="qhead"><div>#</div><div data-qsort="q">Q.No ${arrow('q')}</div><div>Description</div><div data-qsort="pct" style="text-align:right;color:${col};font-weight:700">% ${arrow('pct')}</div></div>${rows}</div></div>`;
+     <div class="cap">${esc(n.title)} · ${esc(subj)} · ${esc(CONFIG.cycle)} · ${kind === 'top' ? 'Most students got right' : 'Most students got wrong'} · Showing all ${list.length} · highest to lowest</div>
+     <div class="card q-${kind}"><div class="qhead"><div>#</div><div>Q.No</div><div>Description</div><div style="text-align:right;color:${col};font-weight:700">${kind === 'hard' ? '% Wrong' : '%'}</div></div>${rows}</div></div>`;
 }
 
 /* ---------- see-more clamp (max 2 lines, "See more" sits at the end of line 2) ---------- */
@@ -1256,7 +1254,7 @@ function openLevels(id){
   v.innerHTML = `<div class="lvs-in"><div class="lvs-grip"></div><h3>Student Level Breakdown</h3>
     <div class="lvs-sub">${esc(n.name)} · ${esc(examLabel(state.exam))} · ${esc(CONFIG.cycle)}${F && state.cls ? ' · ' + esc(CONFIG.classes[state.cls - 1]) : ''} · ${fmt(t)} students</div>
     <div class="lvs-box${F ? ' fl' : ''}">${L.map((l, i) => { const c = st0.dist[i], w = t ? c / t * 100 : 0;
-      return `<div class="lvs-row"><b style="color:${l.color}">${esc(l.key)}${F ? '' : `<small>${esc(l.name)}</small>`}</b><div class="lvs-bar"><i style="width:${w}%;background:${l.color}"></i></div><span style="color:${l.color}">${fmt(c)} (${Math.round(w)}%)</span></div>`; }).join('')}</div>${move}
+      return `<div class="lvs-row"><b style="color:${l.color}">${esc(l.key)}${F ? '' : `<small>${esc(l.name)}</small>`}</b><div class="lvs-bar"><i style="width:${w}%;background:${l.color}"></i></div><span style="color:${l.color}">${fmt(c)} students (${Math.round(w)}%)</span></div>`; }).join('')}</div>${move}
     <a class="lvs-go" data-go="#/acad/${n.id}">View Academic Performance →</a></div>`;
   v.hidden = false; document.body.style.overflow = 'hidden';
 }
@@ -1281,10 +1279,12 @@ function route(){
   let view = m ? m[1] : 'n', id = fallbackId(m ? m[2] : CONFIG.rootId);
   return {view, id};
 }
+const noClassData = () => !!(CONFIG.classTabs && !CONFIG.classTabs[state.ct].data);
 function render(){
   const {view, id} = route(), n = find(id);
   let body;
-  if (n.type === 'student') body = viewStudent(n);
+  if (noClassData()) body = viewOverview(n.type === 'student' ? n.parent : n);
+  else if (n.type === 'student') body = viewStudent(n);
   else if (view === 'acad') body = viewAcad(n);
   else if (view === 'part') body = viewPart(n);
   else if (RANK_TITLES[view]) body = viewRank(n, view);
@@ -1314,7 +1314,7 @@ document.addEventListener('click', e => {
   const back = t.closest('[data-back]');
   if (back){ const id = backTarget(); if (id) location.hash = '#/n/' + id; return; }
   const ex = t.closest('[data-exam]');
-  if (ex){ state.exam = ex.dataset.exam; state.fcyc = null; state.cyc = null; state.ef = 0; state.sw = null; applyProfile();
+  if (ex){ state.exam = ex.dataset.exam; state.fcyc = null; state.cyc = null; state.ef = 0; state.ct = 0; state.sw = null; applyProfile();
     if (state.qs >= CONFIG.questionSubjects.length) state.qs = 0;
     const {view, id} = route(); const nid = fallbackId(id); history.replaceState(null, '', `#/${view}/${nid}`); render(); return; }
   const so = t.closest('[data-sort]');
@@ -1325,6 +1325,7 @@ document.addEventListener('click', e => {
   const ex2 = t.closest('[data-exp]'); if (ex2){ state.exp[ex2.dataset.exp] = !state.exp[ex2.dataset.exp]; render(); return; }
   const rk = t.closest('[data-rk]'); if (rk){ const v = route().view; state.rk[v].key = rk.dataset.rk; render(); return; }
   const ef = t.closest('[data-ef]'); if (ef){ state.ef = +ef.dataset.ef; render(); return; }
+  const ctb = t.closest('[data-ct]'); if (ctb){ state.ct = +ctb.dataset.ct; render(); return; }
   const sw = t.closest('[data-sw]'); if (sw){ const [id, c] = sw.dataset.sw.split(':'); state.sw = {id, c:+c}; render(); return; }
   const fc = t.closest('[data-fcyc]');   // cycle
   if (fc){ state.fcyc = +fc.dataset.fcyc; state.cyc = null; applyProfile(); const {view, id} = route(); history.replaceState(null, '', `#/${view}/${fallbackId(id)}`); render(); return; }
